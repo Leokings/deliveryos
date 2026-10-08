@@ -1,0 +1,1 @@
+{"install_command":"python -m pip install -r requirements.txt","verify_command":"python -m deliveryos_agent.mcp_server"}
