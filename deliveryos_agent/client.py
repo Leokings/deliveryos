@@ -85,7 +85,13 @@ class DeliveryOSClient:
                 else "observer")
         status = str(job.get("status", "UNKNOWN"))
         actions: list[str] = []
-        if status == "PROPOSED":
+        deadline = job.get("submission_deadline_epoch", job.get("due_epoch"))
+        overdue = (status in ("PROPOSED", "ACTIVE", "REVISION")
+                   and isinstance(deadline, (int, float)) and time.time() > deadline)
+        if overdue:
+            if wallet:
+                actions = ["deliveryos_expire_undelivered"]
+        elif status == "PROPOSED":
             if role == "provider":
                 actions = ["deliveryos_accept_job", "deliveryos_decline_job"]
             elif role == "buyer":
@@ -154,7 +160,7 @@ class DeliveryOSClient:
             "status": status,
             "consensus_result": consensus,
             "execution_result": execution,
-            "finalized_success": (status == "FINALIZED" and execution == "SUCCESS"
+            "finalized_success": (status == "FINALIZED" and execution in ("SUCCESS", "FINISHED_WITH_RETURN")
                                   and consensus in ("AGREE", "MAJORITY_AGREE")),
             "error": result.get("payload") if execution == "ERROR" and isinstance(result, dict) else None,
         }

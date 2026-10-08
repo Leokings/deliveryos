@@ -68,6 +68,7 @@ export default function HomePage() {
   const [job, setJob] = useState<Job | null>(null);
   const [submission, setSubmission] = useState<Submission | null>(null);
   const lookupSequence = useRef(0);
+  const recentSequence = useRef(0);
   const [recent, setRecent] = useState<RecentJobs | null>(null);
   const [recentError, setRecentError] = useState("");
   const [notice, setNotice] = useState("");
@@ -102,8 +103,9 @@ export default function HomePage() {
   }, []);
 
   function chooseVersion(next: ContractVersion) {
-    if (next === version) return;
+    if (busy || next === version) return;
     lookupSequence.current += 1;
+    recentSequence.current += 1;
     setVersion(next);
     setJob(null); setSubmission(null); setRecent(null); setRecentError(""); setLookupId("");
     setError(""); setNotice(""); setTxHash(""); setTxStatus(null); setEvidenceUrl("");
@@ -111,11 +113,13 @@ export default function HomePage() {
   }
 
   const refreshRecent = useCallback(async () => {
+    const sequence = ++recentSequence.current;
     try {
       setRecentError("");
-      setRecent(await apiJson<RecentJobs>(`${apiBase}/jobs?limit=3`, "default"));
+      const result = await apiJson<RecentJobs>(`${apiBase}/jobs?limit=3`, "default");
+      if (sequence === recentSequence.current) setRecent(result);
     } catch (cause) {
-      setRecentError((cause as Error).message);
+      if (sequence === recentSequence.current) setRecentError((cause as Error).message);
     }
   }, [apiBase]);
 
@@ -151,6 +155,7 @@ export default function HomePage() {
       ? "v1" : params.get("version") === "v2" ? "v2" : params.get("version") === "v3" ? "v3" : "v4";
     if (requested !== version) {
       lookupSequence.current += 1;
+      recentSequence.current += 1;
       setJob(null); setSubmission(null);
       setVersion(requested);
       return;
@@ -275,8 +280,10 @@ export default function HomePage() {
       setError("Enter a 0x-prefixed 32-byte transaction hash.");
       return;
     }
+    const sequence = lookupSequence.current;
     try {
       const current = await apiJson<TxStatus>(`/api/transactions/${txHash}`);
+      if (sequence !== lookupSequence.current) return;
       setTxStatus(current);
       if (current.status === "FINALIZED") {
         setNotice(current.finalized_success ? "Transaction finalized and executed successfully." : "Transaction finalized but did not execute successfully. No state change should be assumed.");
@@ -284,12 +291,13 @@ export default function HomePage() {
         await refreshRecent();
       }
     } catch (cause) {
-      setError((cause as Error).message);
+      if (sequence === lookupSequence.current) setError((cause as Error).message);
     }
   }
 
   async function write(method: string, args: Array<string | number>, nextJobId?: string) {
     if (!wallet) { openWallet(); return; }
+    const sequence = lookupSequence.current;
     setError(""); setNotice(""); setBusy(true); setTxStatus(null);
     let submitted = "";
     try {
@@ -309,7 +317,7 @@ export default function HomePage() {
           if (current.status === "FINALIZED") {
             if (!current.finalized_success) throw new Error(`Transaction finalized without successful execution (${current.consensus_result} / ${current.execution_result}).`);
             setNotice("Transaction finalized and executed. The job below is read from finalized chain state.");
-            await loadJob(nextJobId ?? job?.job_id ?? "");
+            if (sequence === lookupSequence.current) await loadJob(nextJobId ?? job?.job_id ?? "");
             if (tab === "explore") await refreshRecent();
             return;
           }
@@ -350,6 +358,7 @@ export default function HomePage() {
     try {
       validateEvidenceUrl(evidenceUrl);
       if (!evidenceUrl.startsWith(job.evidence_prefix)) throw new Error("Evidence is outside the repository prefix agreed by the buyer.");
+      setBusy(true);
       setNotice(version !== "v1" ? "Checking the manifest and every pinned file before your wallet signs…" : "Checking the exact public bytes and SHA-256 before asking your wallet to sign…");
       const evidence = version !== "v1"
         ? await apiJson<Evidence & { content_fingerprint: string }>(`${apiBase}/packages/preflight?url=${encodeURIComponent(evidenceUrl)}&prefix=${encodeURIComponent(job.evidence_prefix)}&criteria=${job.criteria.length}`)
@@ -363,7 +372,10 @@ export default function HomePage() {
       }
       await write("submit_delivery", [job.job_id, evidence.url, evidence.sha256, evidence.size_bytes]);
     } catch (cause) {
+      setNotice("");
       setError((cause as Error).message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -402,7 +414,7 @@ export default function HomePage() {
     </section>
 
     <section className="workspace-section" id="workspace"><div className="wrap"><div className="workspace-intro"><div><span className="mini-label">YOUR WORKSPACE</span><h2>What would you like to do?</h2><p>You can look around without a wallet. Connect one only when you are ready to sign.</p></div><div className="network-chip"><span className="live-pulse" /> Studionet · 61999</div></div>
-      <details className="format-details"><summary>Delivery format: {version === "v1" ? "one public file" : "up to 6 public files"} <span>Change format</span></summary><div className="protocol-picker" role="group" aria-label="Delivery protocol"><button type="button" className={version === "v4" ? "selected" : ""} aria-pressed={version === "v4"} onClick={() => chooseVersion("v4")}>Up to six files <span>v4 · current</span></button><button type="button" className={version === "v3" ? "selected" : ""} aria-pressed={version === "v3"} onClick={() => chooseVersion("v3")}>Up to six files <span>v3 · legacy</span></button><button type="button" className={version === "v2" ? "selected" : ""} aria-pressed={version === "v2"} onClick={() => chooseVersion("v2")}>Up to six files <span>v2 · legacy</span></button><button type="button" className={version === "v1" ? "selected" : ""} aria-pressed={version === "v1"} onClick={() => chooseVersion("v1")}>Single file <span>v1 · legacy</span></button><p>{version === "v4" ? "Current format. Approval, GenLayer review, and corrections stop at the fixed review cutoff; an unreviewed job can then be closed as inconclusive." : version === "v3" ? "Older package jobs remain readable. Corrections stop at their cutoff, but approval and review do not." : version === "v2" ? "Older package jobs remain readable, but a submitted package cannot be corrected." : "Older format for one small text file."}</p></div></details>
+      <details className="format-details"><summary>Delivery format: {version === "v1" ? "one public file" : "up to 6 public files"} <span>Change format</span></summary><div className="protocol-picker" role="group" aria-label="Delivery protocol"><button type="button" disabled={busy} className={version === "v4" ? "selected" : ""} aria-pressed={version === "v4"} onClick={() => chooseVersion("v4")}>Up to six files <span>v4 · current</span></button><button type="button" disabled={busy} className={version === "v3" ? "selected" : ""} aria-pressed={version === "v3"} onClick={() => chooseVersion("v3")}>Up to six files <span>v3 · legacy</span></button><button type="button" disabled={busy} className={version === "v2" ? "selected" : ""} aria-pressed={version === "v2"} onClick={() => chooseVersion("v2")}>Up to six files <span>v2 · legacy</span></button><button type="button" disabled={busy} className={version === "v1" ? "selected" : ""} aria-pressed={version === "v1"} onClick={() => chooseVersion("v1")}>Single file <span>v1 · legacy</span></button><p>{version === "v4" ? "Current format. Approval, GenLayer review, and corrections stop at the fixed review cutoff; an unreviewed job can then be closed as inconclusive." : version === "v3" ? "Older package jobs remain readable. Corrections stop at their cutoff, but approval and review do not." : version === "v2" ? "Older package jobs remain readable, but a submitted package cannot be corrected." : "Older format for one small text file."}</p></div></details>
       <div className="workspace-shell"><div className="tabs" role="tablist" aria-label="Workspace sections">
         {([ ["create", "Create request"], ["manage", "Open invite"], ["explore", "Explore jobs"], ["agents", "Agent setup"] ] as [Tab, string][]).map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={tab === key} className={`tab ${tab === key ? "active" : ""}`} onClick={() => selectTab(key)}>{label}</button>)}
       </div>

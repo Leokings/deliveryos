@@ -87,7 +87,52 @@ try {
   assert.equal(await buyerPage.getByRole("button", { name: /Approve finished work/ }).count(), 0);
   assert.equal(await buyerPage.getByRole("button", { name: /Ask GenLayer to review/ }).count(), 0);
   await buyerPage.close();
-  console.log("PASS v3 legacy soft-close, v4 strict-cutoff UI for both roles, package guide, and stale-state cleanup");
+
+  // A previous protocol's slow response must not become the current list.
+  const racePage = await browser.newPage();
+  let releaseLegacy;
+  const legacyPending = new Promise((resolve) => { releaseLegacy = resolve; });
+  await racePage.route("**/api/v3/jobs?limit=3", async (route) => {
+    await legacyPending;
+    await route.fulfill({ json: { total: 1, jobs: [{ ...job, job_id: "legacy_recent_01" }] } });
+  });
+  await racePage.route("**/api/v4/jobs?limit=3", (route) => route.fulfill({ json: { total: 0, jobs: [] } }));
+  await racePage.goto(`${base}/?version=v3`, { waitUntil: "networkidle" });
+  const legacyRequest = racePage.waitForRequest((request) => request.url().includes("/api/v3/jobs?limit=3"));
+  await racePage.getByRole("tab", { name: "Explore jobs" }).click();
+  await legacyRequest;
+  await racePage.locator(".format-details summary").click();
+  await racePage.getByRole("button", { name: /Up to six files v4 · current/i }).click();
+  await racePage.getByText("No jobs have been created yet.").waitFor();
+  releaseLegacy();
+  await racePage.waitForTimeout(250);
+  assert.equal(await racePage.getByText("legacy_recent_01").count(), 0);
+  await racePage.close();
+
+  // Preflight is part of a write workflow: no double submit or protocol switch.
+  v4Job.review_deadline_epoch = Math.floor(Date.now() / 1000) + 7200;
+  await page.locator(".job-head-actions").getByRole("button", { name: /Refresh/ }).click();
+  await page.getByRole("button", { name: /Correct pending evidence/ }).waitFor();
+  let releasePreflight;
+  const preflightPending = new Promise((resolve) => { releasePreflight = resolve; });
+  await page.route("**/api/v4/packages/preflight?*", async (route) => {
+    await preflightPending;
+    await route.fulfill({ status: 422, json: { error: "Test preflight stopped before signing." } });
+  });
+  await page.locator(".submit-box input").fill(submission.url);
+  const preflightRequest = page.waitForRequest((request) => request.url().includes("/api/v4/packages/preflight?"));
+  await page.getByRole("button", { name: /Correct pending evidence/ }).click();
+  await preflightRequest;
+  if (await page.locator(".format-details").getAttribute("open") === null) {
+    await page.locator(".format-details summary").click();
+  }
+  assert.equal(await page.getByRole("button", { name: /Up to six files v3 · legacy/i }).isDisabled(), true);
+  assert.equal(await page.getByRole("button", { name: /Correct pending evidence/ }).isDisabled(), true);
+  releasePreflight();
+  await page.locator(".alert-error").getByText(/Test preflight stopped/).waitFor();
+  assert.equal(await page.locator(".alert-info").count(), 0, "failed preflight must clear the checking notice");
+  assert.equal(await page.getByRole("button", { name: /Up to six files v3 · legacy/i }).isEnabled(), true);
+  console.log("PASS v3 legacy soft-close, v4 strict-cutoff UI, stale-state cleanup, version-switch list race, and preflight write lock");
 } finally {
   await browser.close();
 }

@@ -74,6 +74,19 @@ def test_readonly_agent_cannot_receive_signed_action_suggestions():
     assert result["possible_tools"] == []
 
 
+@pytest.mark.parametrize("status", ["PROPOSED", "ACTIVE", "REVISION"])
+def test_overdue_agent_suggests_expiry_not_impossible_actions(monkeypatch, status):
+    monkeypatch.setattr("deliveryos_agent.client.time.time", lambda: 100)
+    service = DeliveryOSClient(ADDRESS, client=FakeSDK())
+    service.account = SimpleNamespace(address="0x" + "d" * 40)
+    service.get_job = lambda _: {
+        "status": status, "buyer": "0x" + "b" * 40,
+        "provider": "0x" + "c" * 40, "protocol": "DELIVERYOS_PACKAGES_V4",
+        "due_epoch": 90, "submission_deadline_epoch": 99,
+    }
+    assert service.next_actions("job_12345")["possible_tools"] == ["deliveryos_expire_undelivered"]
+
+
 def test_v3_agent_suggests_bounded_correction():
     service = DeliveryOSClient(ADDRESS, client=FakeSDK())
     service.account = SimpleNamespace(address="0x" + "c" * 40)
@@ -181,6 +194,11 @@ def test_rejects_mutable_or_untrusted_evidence_url():
 def test_finalization_checks_execution_not_just_consensus():
     sdk = FakeSDK()
     service = DeliveryOSClient(ADDRESS, client=sdk)
+    assert service.transaction_status("0x" + "b" * 64)["finalized_success"] is True
+    sdk.get_transaction = lambda _: {
+        "status_name": "FINALIZED", "result_name": "MAJORITY_AGREE",
+        "consensus_data": {"leader_receipt": [{"execution_result": "FINISHED_WITH_RETURN"}]},
+    }
     assert service.transaction_status("0x" + "b" * 64)["finalized_success"] is True
     sdk.get_transaction = lambda _: {
         "status_name": "FINALIZED", "result_name": "MAJORITY_AGREE",
