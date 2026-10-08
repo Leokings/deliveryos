@@ -25,5 +25,24 @@
       "review": "0x21a43a2d3685757bdf66dabd0c6f5b61fc398fad73b02c2926227b287aa2d069"
     }
   },
+  "browser_write_production": {
+    "site": "https://deliveryos-tau-wheat.vercel.app/",
+    "deployment_id": "dpl_2ZYE59hb4hzSxyWTrcaf4gqVVzfZ",
+    "source_commit": "24b4f5602c09851c097c450c5591ab3c498fd0b9",
+    "job_id": "v4_browser_994c2bae6cb74236",
+    "buyer": "0xeaf807326770261a6f65648893a48f52f9dfbdd3",
+    "transaction": "0x5516b801a0d8728c1f30a733e60193144692ca6a60799ba5e603d80f44218bcf",
+    "receipt": {
+      "status": "FINALIZED",
+      "consensus_result": "MAJORITY_AGREE",
+      "execution_result": "SUCCESS",
+      "finalized_success": true
+    },
+    "chain_state": {
+      "protocol": "DELIVERYOS_PACKAGES_V4",
+      "status": "PROPOSED"
+    },
+    "note": "A fresh ephemeral browser wallet signed create_job through the production site; its receipt finalized successfully and the v4 API returned the matching on-chain job. The test key was not stored."
+  },
   "notes": "All six Studionet writes finalized with successful execution; correction and the two-file validator review passed, and deployed code bytes matched this repository. Separate clock-controlled direct tests passed late approval/review rejection, on-cutoff acceptance/review, and overdue close. A seven-day late transaction has not yet been observed on Studionet."
 }

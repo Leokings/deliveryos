@@ -248,6 +248,13 @@ transaction are in [the v3 test record](deployments/studionet_packages_v3.json).
 This verifies the browser's write path for v3, not every wallet extension or
 every future Studionet response.
 
+The v4 release also passed the public-site browser suite and a new ephemeral
+wallet-signed `create_job` through the production site. The finalized successful
+transaction, on-chain job, and tested deployment are in
+[the v4 test record](deployments/studionet_packages_v4.json). The hard cutoff
+itself was clock-tested directly; a seven-day-late live transaction is still
+unverified.
+
 See [ARCHITECTURE.md](ARCHITECTURE.md) for protocol boundaries and explicit
 limitations. In particular, SHA-256 proves the bytes examined, not that a
 seller's factual claims are true. GenLayer AI judgments can still be
