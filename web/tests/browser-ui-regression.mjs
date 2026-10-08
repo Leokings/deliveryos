@@ -46,7 +46,7 @@ try {
   assert.match(await page.locator(".submit-box").innerText(), /cutoff stays/);
   assert.match(await page.locator(".job-detail").innerText(), /Unreviewed close available after/);
   assert.equal(await page.getByRole("link", { name: /How to prepare a package/ }).getAttribute("href"),
-    "https://github.com/Leokings/deliveryos/blob/main/README.md#evidence-packages-v3-current-v2-legacy");
+    "https://github.com/Leokings/deliveryos/blob/main/README.md#evidence-packages-v4-current-v3-and-v2-legacy");
   job.review_deadline_epoch = Math.floor(Date.now() / 1000) - 1;
   await page.locator(".job-head-actions").getByRole("button", { name: /Refresh/ }).click();
   await page.getByRole("button", { name: "Close unreviewed submission" }).waitFor();
@@ -58,7 +58,36 @@ try {
   await page.locator(".alert-error").getByText(/not found/i).waitFor();
   assert.equal(await page.locator(".job-detail").count(), 0);
   assert.equal(new URL(page.url()).searchParams.has("job"), false);
-  console.log("PASS v3 correction CTA, accurate soft-close copy, package guide link, wallet role, and stale-state cleanup");
+
+  const v4Job = { ...job, protocol: "DELIVERYOS_PACKAGES_V4" };
+  await page.route(`**/api/v4/jobs/${id}`, (route) => route.fulfill({ json: v4Job }));
+  await page.route(`**/api/v4/jobs/${id}/submissions/2`, (route) => route.fulfill({ json: submission }));
+  await page.locator(".format-details summary").click();
+  await page.getByRole("button", { name: /Up to six files v4 · current/i }).click();
+  await page.getByPlaceholder("Paste a job reference").fill(id);
+  await page.getByRole("button", { name: /Open job/ }).click();
+  await page.getByRole("button", { name: "Close unreviewed submission" }).waitFor();
+  assert.equal(await page.getByRole("button", { name: /Ask GenLayer to review/ }).count(), 0);
+  assert.match(await page.locator(".next-step-copy").innerText(), /no longer valid/);
+  assert.match(await page.locator(".job-detail").innerText(), /Review cutoff/);
+
+  const buyerPage = await browser.newPage();
+  await buyerPage.route(`**/api/v4/jobs/${id}`, (route) => route.fulfill({ json: v4Job }));
+  await buyerPage.route(`**/api/v4/jobs/${id}/submissions/2`, (route) => route.fulfill({ json: submission }));
+  await buyerPage.addInitScript((address) => {
+    window.ethereum = { request: async ({ method }) => {
+      if (method === "eth_requestAccounts") return [address];
+      if (method === "eth_chainId") return "0xf22f";
+      throw new Error(`Unexpected wallet method ${method}`);
+    } };
+  }, v4Job.buyer);
+  await buyerPage.goto(`${base}/?version=v4&job=${id}`, { waitUntil: "networkidle" });
+  await buyerPage.getByRole("button", { name: "Connect wallet" }).click();
+  await buyerPage.getByRole("button", { name: /Browser wallet ·/ }).waitFor();
+  assert.equal(await buyerPage.getByRole("button", { name: /Approve finished work/ }).count(), 0);
+  assert.equal(await buyerPage.getByRole("button", { name: /Ask GenLayer to review/ }).count(), 0);
+  await buyerPage.close();
+  console.log("PASS v3 legacy soft-close, v4 strict-cutoff UI for both roles, package guide, and stale-state cleanup");
 } finally {
   await browser.close();
 }

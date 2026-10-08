@@ -93,14 +93,22 @@ class DeliveryOSClient:
         elif status in ("ACTIVE", "REVISION") and role == "provider":
             actions = ["deliveryos_submit_delivery"]
         elif status == "SUBMITTED":
-            if role == "buyer":
+            package_protocol = job.get("protocol")
+            can_correct = package_protocol in ("DELIVERYOS_PACKAGES_V3", "DELIVERYOS_PACKAGES_V4")
+            before_cutoff = time.time() <= int(job.get("review_deadline_epoch", 0))
+            if package_protocol == "DELIVERYOS_PACKAGES_V4" and not before_cutoff:
+                if wallet:
+                    actions = ["deliveryos_close_unreviewed"]
+            elif role == "buyer":
                 actions = ["deliveryos_accept_delivery", "deliveryos_evaluate_delivery"]
             elif role == "provider":
                 actions = ["deliveryos_evaluate_delivery"]
-                if (job.get("protocol") == "DELIVERYOS_PACKAGES_V3" and
-                        time.time() <= int(job.get("review_deadline_epoch", 0))):
+                if can_correct and before_cutoff:
                     actions.insert(0, "deliveryos_submit_delivery")
-        protocol = ("v3" if job.get("protocol") == "DELIVERYOS_PACKAGES_V3" else
+            if package_protocol == "DELIVERYOS_PACKAGES_V3" and not before_cutoff and wallet:
+                actions.append("deliveryos_close_unreviewed")
+        protocol = ("v4" if job.get("protocol") == "DELIVERYOS_PACKAGES_V4" else
+                    "v3" if job.get("protocol") == "DELIVERYOS_PACKAGES_V3" else
                     "v2" if job.get("protocol") == "DELIVERYOS_PACKAGES_V2" else "v1")
         return {
             "job_id": job_id,
@@ -109,10 +117,13 @@ class DeliveryOSClient:
             "wallet_address": self.wallet_address,
             "possible_tools": actions,
             "job_url_path": f"/?version={protocol}&job={job_id}",
-            "next_step": ("Choose a possible tool. For v3 acceptance/review, pass the inspected "
+            "next_step": ("The v4 decision cutoff has passed. Anyone with a wallet may close this "
+                          "unreviewed submission as inconclusive; approval and review can no longer succeed."
+                          if protocol == "v4" and actions == ["deliveryos_close_unreviewed"] else
+                          "Choose a possible tool. For v3/v4 acceptance/review, pass the inspected "
                           "current_version as expected_version. Then check the transaction hash "
                           "until finalized_success is true and read the job again."
-                          if protocol == "v3" and actions else
+                          if protocol in ("v3", "v4") and actions else
                           "Choose a possible tool, then check its transaction hash until "
                           "finalized_success is true and read the job again."
                           if actions else "No role-specific write is currently suggested. "
@@ -227,24 +238,24 @@ class DeliveryOSClient:
 
     def submit_delivery(self, job_id: str, evidence_url: str) -> dict:
         job = self.get_job(job_id)
-        is_v3 = job.get("protocol") == "DELIVERYOS_PACKAGES_V3"
-        if job["status"] not in (("ACTIVE", "REVISION", "SUBMITTED") if is_v3 else ("ACTIVE", "REVISION")):
+        supports_correction = job.get("protocol") in ("DELIVERYOS_PACKAGES_V3", "DELIVERYOS_PACKAGES_V4")
+        if job["status"] not in (("ACTIVE", "REVISION", "SUBMITTED") if supports_correction else ("ACTIVE", "REVISION")):
             raise ValueError("Job is not awaiting a delivery")
-        if is_v3 and job["status"] == "SUBMITTED" and time.time() > int(job.get("review_deadline_epoch", 0)):
+        if supports_correction and job["status"] == "SUBMITTED" and time.time() > int(job.get("review_deadline_epoch", 0)):
             raise ValueError("Correction window passed")
         if not evidence_url.startswith(job["evidence_prefix"]):
             raise ValueError("Evidence URL is outside the agreed source prefix")
-        if job.get("protocol") in ("DELIVERYOS_PACKAGES_V2", "DELIVERYOS_PACKAGES_V3"):
+        if job.get("protocol") in ("DELIVERYOS_PACKAGES_V2", "DELIVERYOS_PACKAGES_V3", "DELIVERYOS_PACKAGES_V4"):
             from .packages import verify_public_package
-            previous_fingerprint = job.get("last_reviewed_fingerprint") if is_v3 else None
-            if not is_v3 and job["status"] == "REVISION":
+            previous_fingerprint = job.get("last_reviewed_fingerprint") if supports_correction else None
+            if not supports_correction and job["status"] == "REVISION":
                 previous = self.get_submission(job_id, int(job["current_version"]))
                 previous_fingerprint = previous.get("content_fingerprint")
             evidence = verify_public_package(
                 evidence_url, job["evidence_prefix"], len(job["criteria"]),
                 previous_fingerprint=previous_fingerprint,
             )
-            if is_v3 and job["status"] == "SUBMITTED":
+            if supports_correction and job["status"] == "SUBMITTED":
                 previous = self.get_submission(job_id, int(job["current_version"]))
                 if evidence["sha256"] == previous["sha256"]:
                     raise ValueError("A correction must change the manifest bytes")
@@ -256,14 +267,18 @@ class DeliveryOSClient:
 
     def _decision_args(self, job_id: str, expected_version: int | None) -> list:
         job = self.get_job(job_id)
-        if job.get("protocol") == "DELIVERYOS_PACKAGES_V3":
+        protocol = job.get("protocol")
+        if protocol in ("DELIVERYOS_PACKAGES_V3", "DELIVERYOS_PACKAGES_V4"):
             if type(expected_version) is not int or expected_version < 1:
-                raise ValueError("V3 decisions require the inspected expected_version")
+                raise ValueError("V3/V4 decisions require the inspected expected_version")
             if expected_version != int(job["current_version"]):
                 raise ValueError("Pending version changed; inspect the latest evidence")
+            if (protocol == "DELIVERYOS_PACKAGES_V4" and
+                    time.time() > int(job.get("review_deadline_epoch", 0))):
+                raise ValueError("Review cutoff passed; close the unreviewed submission")
             return [job_id, expected_version]
         if expected_version is not None:
-            raise ValueError("Expected version is supported only by the v3 contract")
+            raise ValueError("Expected version is supported only by the v3/v4 contracts")
         return [job_id]
 
     def accept_delivery(self, job_id: str, expected_version: int | None = None) -> dict:

@@ -1,4 +1,4 @@
-# DeliveryOS v1/v2/v3 security boundary
+# DeliveryOS v1–v4 security boundary
 
 This is a non-custodial, decision-only Studionet release. Do not connect
 payments to its status field without a separate escrow design and review.
@@ -47,10 +47,13 @@ payments to its status field without a separate escrow design and review.
   and either party's validator-review call include an expected version. If a
   correction finalizes first, the stale decision reverts instead of examining
   or accepting a different version.
-- The unreviewed-close threshold is not an automatic or hard decision cutoff.
-  After it passes, anyone may close a pending submission as `INCONCLUSIVE`;
-  until a close transaction finalizes, the buyer may still accept or either
-  party may request validator review.
+- V3's unreviewed-close threshold is not an automatic or hard decision cutoff:
+  until a close transaction finalizes, a late approval or validator review may
+  still succeed. V4 changes this for newly created v4 jobs: after the fixed
+  `review_deadline_epoch`, correction, buyer approval and validator review
+  revert on-chain. Anyone may close the still-pending submission as
+  `INCONCLUSIVE`; closure itself is not automatic. At the exact deadline,
+  decisions remain allowed.
 - Only `raw.githubusercontent.com` and full commit-SHA evidence URLs are
   accepted. The buyer approves the repository prefix. The agent connector
   refuses redirects; GenLayer validators check the final fetched byte hash.
@@ -58,7 +61,7 @@ payments to its status field without a separate escrow design and review.
 Known limits: there is no escrow, automated evidence authenticity check,
 private evidence, image/video interpretation, app-level appeal flow, audited
 wallet custody, or security guarantee against all adversarial deliverables.
-V2/v3 package checks do not prove authorship or external completion. Browser and
+V2–v4 package checks do not prove authorship or external completion. Browser and
 agent preflight may reject some unusual CSV accepted by Python's parser; use
 plain, conventional CSV or text/JSON. A controlled adversarial multi-validator
 disagreement run remains unverified; the available test evidence must not be

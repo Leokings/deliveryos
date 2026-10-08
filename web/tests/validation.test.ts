@@ -69,6 +69,12 @@ test("v3 pending copy calls the provider limit a correction cutoff", () => {
   assert.doesNotMatch(explainStatus("SUBMITTED", "v3"), /review deadline/);
 });
 
+test("v4 pending copy states the hard decision cutoff", () => {
+  assert.match(explainStatus("SUBMITTED", "v4"), /review cutoff/);
+  assert.match(explainStatus("SUBMITTED", "v4"), /only be closed as inconclusive/);
+  assert.match(explainNextStep("SUBMITTED", "provider", "v4"), /before the cutoff/);
+});
+
 test("temporary Studionet write failures have safe, plain-language guidance", () => {
   assert.match(explainWriteFailure("eth_sendRawTransaction: Rate limit exceeded: 500 requests per hour"), /Check this job and your wallet activity/);
   assert.doesNotMatch(explainWriteFailure("eth_sendRawTransaction: Rate limit exceeded"), /eth_sendRawTransaction/);

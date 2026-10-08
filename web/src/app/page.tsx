@@ -25,11 +25,13 @@ const EXAMPLE_JOBS: Record<ContractVersion, string> = {
   v1: "deliveryos_cb5bcede778b4248",
   v2: "package_f2131d0cd28244b2",
   v3: "package_v3_b3a8798ee6a74d11",
+  v4: "package_v4_2d746c70318d4b36",
 };
 const EXAMPLE_REVIEW_TRANSACTIONS: Record<ContractVersion, string> = {
   v1: "0x058b7551a29bb6595ef9767cf2ff5050d129e71bc42e57429cb565e25e592424",
   v2: "0x650a6bd7014401f7ac35dfadfa55a8eb1856c327bced72b792a98ab954bc6ab7",
   v3: "0xd99c11024f0a7036763e713bf6b602788e5c97f8dfe831a4b757d8ad93e75e55",
+  v4: "0x21a43a2d3685757bdf66dabd0c6f5b61fc398fad73b02c2926227b287aa2d069",
 };
 const PACKAGE_EXAMPLE = "https://raw.githubusercontent.com/Leokings/deliveryos/d8a674033c477f0d2bcae59ab8049cb2bdd86e37/examples/package_v2/package.json";
 
@@ -57,7 +59,8 @@ function statusTone(status: string) {
 
 export default function HomePage() {
   const [tab, setTab] = useState<Tab>("create");
-  const [version, setVersion] = useState<ContractVersion>("v3");
+  const [version, setVersion] = useState<ContractVersion>("v4");
+  const [nowEpoch, setNowEpoch] = useState(0);
   const [wallets, setWallets] = useState<WalletChoice[]>([]);
   const [wallet, setWallet] = useState<ConnectedWallet | null>(null);
   const [walletPicker, setWalletPicker] = useState(false);
@@ -82,6 +85,12 @@ export default function HomePage() {
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const apiBase = version === "v1" ? "/api" : `/api/${version}`;
   const exampleJob = EXAMPLE_JOBS[version];
+
+  useEffect(() => {
+    setNowEpoch(Date.now() / 1000);
+    const timer = window.setInterval(() => setNowEpoch(Date.now() / 1000), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     setJobId((current) => current || `job_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`);
@@ -139,7 +148,7 @@ export default function HomePage() {
     const params = new URLSearchParams(window.location.search);
     // Older v1 invite links had no version parameter. Preserve those links.
     const requested = params.get("version") === "v1" || (!params.has("version") && params.has("job"))
-      ? "v1" : params.get("version") === "v2" ? "v2" : "v3";
+      ? "v1" : params.get("version") === "v2" ? "v2" : params.get("version") === "v3" ? "v3" : "v4";
     if (requested !== version) {
       lookupSequence.current += 1;
       setJob(null); setSubmission(null);
@@ -345,11 +354,11 @@ export default function HomePage() {
       const evidence = version !== "v1"
         ? await apiJson<Evidence & { content_fingerprint: string }>(`${apiBase}/packages/preflight?url=${encodeURIComponent(evidenceUrl)}&prefix=${encodeURIComponent(job.evidence_prefix)}&criteria=${job.criteria.length}`)
         : await apiJson<Evidence>(`/api/evidence?url=${encodeURIComponent(evidenceUrl)}`);
-      const previousFingerprint = version === "v3" ? job.last_reviewed_fingerprint : submission?.content_fingerprint;
+      const previousFingerprint = version === "v3" || version === "v4" ? job.last_reviewed_fingerprint : submission?.content_fingerprint;
       if (version !== "v1" && job.status === "REVISION" && previousFingerprint === (evidence as Evidence & { content_fingerprint: string }).content_fingerprint) {
         throw new Error("A revision must change at least one file, not just the manifest metadata.");
       }
-      if (version === "v3" && job.status === "SUBMITTED" && submission?.sha256 === evidence.sha256) {
+      if ((version === "v3" || version === "v4") && job.status === "SUBMITTED" && submission?.sha256 === evidence.sha256) {
         throw new Error("A correction must change the manifest bytes.");
       }
       await write("submit_delivery", [job.job_id, evidence.url, evidence.sha256, evidence.size_bytes]);
@@ -359,11 +368,12 @@ export default function HomePage() {
   }
 
   const role = useMemo(() => wallet && job ? (wallet.address.toLowerCase() === job.buyer.toLowerCase() ? "buyer" : wallet.address.toLowerCase() === job.provider.toLowerCase() ? "provider" : "observer") : "observer", [wallet, job]);
-  const canExpire = job && ["PROPOSED", "ACTIVE", "REVISION"].includes(job.status) && Date.now() / 1000 > job.submission_deadline_epoch;
-  const canClose = job && submission && job.status === "SUBMITTED" && Date.now() / 1000 >
-    (version === "v3" ? (job.review_deadline_epoch ?? Number.POSITIVE_INFINITY) : Math.max(job.due_epoch, submission.submitted_epoch) + 7 * 86400);
-  const canCorrect = job && version === "v3" && job.status === "SUBMITTED"
-    && Date.now() / 1000 <= (job.review_deadline_epoch ?? 0);
+  const canExpire = job && ["PROPOSED", "ACTIVE", "REVISION"].includes(job.status) && nowEpoch > job.submission_deadline_epoch;
+  const canClose = job && submission && job.status === "SUBMITTED" && nowEpoch >
+    (version === "v3" || version === "v4" ? (job.review_deadline_epoch ?? Number.POSITIVE_INFINITY) : Math.max(job.due_epoch, submission.submitted_epoch) + 7 * 86400);
+  const canCorrect = job && (version === "v3" || version === "v4") && job.status === "SUBMITTED"
+    && nowEpoch > 0 && nowEpoch <= (job.review_deadline_epoch ?? 0);
+  const canDecide = job && job.status === "SUBMITTED" && (version !== "v4" || (nowEpoch > 0 && nowEpoch <= (job.review_deadline_epoch ?? 0)));
 
   return <main>
     <div className="ambient ambient-one" aria-hidden="true" /><div className="ambient ambient-two" aria-hidden="true" />
@@ -392,7 +402,7 @@ export default function HomePage() {
     </section>
 
     <section className="workspace-section" id="workspace"><div className="wrap"><div className="workspace-intro"><div><span className="mini-label">YOUR WORKSPACE</span><h2>What would you like to do?</h2><p>You can look around without a wallet. Connect one only when you are ready to sign.</p></div><div className="network-chip"><span className="live-pulse" /> Studionet · 61999</div></div>
-      <details className="format-details"><summary>Delivery format: {version === "v1" ? "one public file" : "up to 6 public files"} <span>Change format</span></summary><div className="protocol-picker" role="group" aria-label="Delivery protocol"><button type="button" className={version === "v3" ? "selected" : ""} aria-pressed={version === "v3"} onClick={() => chooseVersion("v3")}>Up to six files <span>v3 · current</span></button><button type="button" className={version === "v2" ? "selected" : ""} aria-pressed={version === "v2"} onClick={() => chooseVersion("v2")}>Up to six files <span>v2 · legacy</span></button><button type="button" className={version === "v1" ? "selected" : ""} aria-pressed={version === "v1"} onClick={() => chooseVersion("v1")}>Single file <span>v1 · legacy</span></button><p>{version === "v3" ? "Current package format. A provider can correct pending evidence until the fixed correction cutoff." : version === "v2" ? "Older package jobs remain readable, but a submitted package cannot be corrected." : "Older format for one small text file."}</p></div></details>
+      <details className="format-details"><summary>Delivery format: {version === "v1" ? "one public file" : "up to 6 public files"} <span>Change format</span></summary><div className="protocol-picker" role="group" aria-label="Delivery protocol"><button type="button" className={version === "v4" ? "selected" : ""} aria-pressed={version === "v4"} onClick={() => chooseVersion("v4")}>Up to six files <span>v4 · current</span></button><button type="button" className={version === "v3" ? "selected" : ""} aria-pressed={version === "v3"} onClick={() => chooseVersion("v3")}>Up to six files <span>v3 · legacy</span></button><button type="button" className={version === "v2" ? "selected" : ""} aria-pressed={version === "v2"} onClick={() => chooseVersion("v2")}>Up to six files <span>v2 · legacy</span></button><button type="button" className={version === "v1" ? "selected" : ""} aria-pressed={version === "v1"} onClick={() => chooseVersion("v1")}>Single file <span>v1 · legacy</span></button><p>{version === "v4" ? "Current format. Approval, GenLayer review, and corrections stop at the fixed review cutoff; an unreviewed job can then be closed as inconclusive." : version === "v3" ? "Older package jobs remain readable. Corrections stop at their cutoff, but approval and review do not." : version === "v2" ? "Older package jobs remain readable, but a submitted package cannot be corrected." : "Older format for one small text file."}</p></div></details>
       <div className="workspace-shell"><div className="tabs" role="tablist" aria-label="Workspace sections">
         {([ ["create", "Create request"], ["manage", "Open invite"], ["explore", "Explore jobs"], ["agents", "Agent setup"] ] as [Tab, string][]).map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={tab === key} className={`tab ${tab === key ? "active" : ""}`} onClick={() => selectTab(key)}>{label}</button>)}
       </div>
@@ -423,18 +433,18 @@ export default function HomePage() {
         <p className="muted">Use the link someone sent you, or paste the job reference below. You can read it before connecting a wallet.</p>
         <form className="search-row" onSubmit={(event) => { event.preventDefault(); loadJob(lookupId.trim()); }}><label className="sr-only" htmlFor="manage-lookup">Job reference</label><input id="manage-lookup" value={lookupId} onChange={(event) => setLookupId(event.target.value)} placeholder="Paste a job reference" /><button className="button button-dark" type="submit">Open job <span>→</span></button></form>
         {job ? <div className="actions-card"><div className="actions-title"><div><span className="mini-label">NEXT STEP</span><strong>{wallet ? role : "Read first"}</strong></div><span className={`status status-${statusTone(job.status)}`}>{job.status}</span></div>
-          <p className="next-step-copy">{explainNextStep(job.status, role, version)}</p>
+          <p className="next-step-copy">{version === "v4" && canClose ? "The review cutoff passed. Approval and GenLayer review are no longer valid; anyone with a wallet can close this submission as inconclusive." : explainNextStep(job.status, role, version)}</p>
           {!wallet && !["ACCEPTED", "REJECTED", "INCONCLUSIVE", "EXPIRED", "CANCELLED", "DECLINED"].includes(job.status) && <button type="button" className="inline-connect" onClick={openWallet}>Connect the invited wallet →</button>}
           {wallet && role === "observer" && <p className="muted">This wallet is not the buyer or invitee. It can read the job, but cannot accept or approve it.</p>}
           <div className="action-buttons">
           {job.status === "PROPOSED" && role === "provider" && <><button disabled={busy} onClick={() => write("accept_job", [job.job_id])}>Accept request ↗</button><button disabled={busy} className="secondary-action" onClick={() => write("decline_job", [job.job_id])}>Decline</button></>}
           {job.status === "PROPOSED" && role === "buyer" && <button disabled={busy} className="secondary-action" onClick={() => write("cancel_proposal", [job.job_id])}>Cancel proposal</button>}
-          {(["ACTIVE", "REVISION"].includes(job.status) || canCorrect) && role === "provider" && <div className="submit-box"><label className="field"><span>{version !== "v1" ? "Link to your public package manifest" : "Link to your public finished file"}</span><input value={evidenceUrl} onChange={(event) => setEvidenceUrl(event.target.value)} placeholder={`${job.evidence_prefix}<40-character-commit>/${version !== "v1" ? "package.json" : "file.txt"}`} /><small>Use a full GitHub commit link, not a branch link. We check the exact files before your wallet signs.</small></label>{version !== "v1" && <a className="evidence-help" href="https://github.com/Leokings/deliveryos/blob/main/README.md#evidence-packages-v3-current-v2-legacy" target="_blank" rel="noreferrer">How to prepare a package ↗</a>}{canCorrect && <p className="muted">Correction replaces the pending version. Its cutoff stays {utc(job.review_deadline_epoch ?? 0)}.</p>}<button disabled={busy} onClick={submitDelivery}>{canCorrect ? "Correct pending evidence ↗" : "Submit finished work ↗"}</button></div>}
-          {job.status === "SUBMITTED" && role === "buyer" && <button disabled={busy} onClick={() => write("accept_delivery", version === "v3" ? [job.job_id, job.current_version] : [job.job_id])}>Approve finished work ↗</button>}
-          {job.status === "SUBMITTED" && (role === "buyer" || role === "provider") && <button disabled={busy} className="outline-action" onClick={() => write("evaluate_delivery", version === "v3" ? [job.job_id, job.current_version] : [job.job_id])}>Ask GenLayer to review ↗</button>}
+          {(["ACTIVE", "REVISION"].includes(job.status) || canCorrect) && role === "provider" && <div className="submit-box"><label className="field"><span>{version !== "v1" ? "Link to your public package manifest" : "Link to your public finished file"}</span><input value={evidenceUrl} onChange={(event) => setEvidenceUrl(event.target.value)} placeholder={`${job.evidence_prefix}<40-character-commit>/${version !== "v1" ? "package.json" : "file.txt"}`} /><small>Use a full GitHub commit link, not a branch link. We check the exact files before your wallet signs.</small></label>{version !== "v1" && <a className="evidence-help" href="https://github.com/Leokings/deliveryos/blob/main/README.md#evidence-packages-v4-current-v3-and-v2-legacy" target="_blank" rel="noreferrer">How to prepare a package ↗</a>}{canCorrect && <p className="muted">Correction replaces the pending version. Its cutoff stays {utc(job.review_deadline_epoch ?? 0)}.</p>}<button disabled={busy} onClick={submitDelivery}>{canCorrect ? "Correct pending evidence ↗" : "Submit finished work ↗"}</button></div>}
+          {canDecide && role === "buyer" && <button disabled={busy} onClick={() => write("accept_delivery", version === "v3" || version === "v4" ? [job.job_id, job.current_version] : [job.job_id])}>Approve finished work ↗</button>}
+          {canDecide && (role === "buyer" || role === "provider") && <button disabled={busy} className="outline-action" onClick={() => write("evaluate_delivery", version === "v3" || version === "v4" ? [job.job_id, job.current_version] : [job.job_id])}>Ask GenLayer to review ↗</button>}
           {canExpire && <button disabled={busy} className="secondary-action" onClick={() => write("expire_undelivered", [job.job_id])}>Close overdue job</button>}
           {canClose && <button disabled={busy} className="secondary-action" onClick={() => write("close_unreviewed", [job.job_id])}>Close unreviewed submission</button>}
-          </div>{version === "v3" && canClose && <p className="muted">Closing is available, not automatic. Until a close transaction finalizes, the buyer may still approve or either party may request review.</p>}</div> : <div className="empty-state">Open a shared link or enter a job reference to see what happens next.</div>}
+          </div>{version === "v3" && canClose && <p className="muted">Closing is available, not automatic. Until a close transaction finalizes, the buyer may still approve or either party may request review.</p>}{version === "v4" && canClose && <p className="muted">Closing is not automatic, but late approval and review are blocked by the contract even if nobody closes it.</p>}</div> : <div className="empty-state">Open a shared link or enter a job reference to see what happens next.</div>}
         </div><aside className="panel-aside guidance"><span className="mini-label">WHY CONNECT A WALLET?</span><h3>Read freely. Sign your actions.</h3><p>Anyone can inspect a job. Only the named buyer and invitee can approve their own steps.</p><div className="aside-note">Never enter a private key on this site. After signing, wait for the transaction to finish before trying again.</div></aside></div>}
 
       {tab === "agents" && <div className="panel-grid"><div className="panel-main">
@@ -445,8 +455,8 @@ export default function HomePage() {
         <details className="agent-advanced"><summary>API endpoints and technical details</summary><div className="api-card"><span>READ A JOB</span><code>GET {apiBase}/jobs/{exampleJob}</code><a href={`${apiBase}/jobs/${exampleJob}`} target="_blank" rel="noreferrer">Open response ↗</a></div><div className="api-card"><span>CHECK A TRANSACTION</span><code>GET /api/transactions/{'{transaction_hash}'}</code><a href={`${apiBase}/openapi`} target="_blank" rel="noreferrer">API reference ↗</a></div><div className="api-card"><span>LOCAL MCP COMMAND</span><code>python -m deliveryos_agent.mcp_server</code></div>{version !== "v1" && <div className="api-card"><span>EXAMPLE PACKAGE</span><a href={PACKAGE_EXAMPLE} target="_blank" rel="noreferrer">Open a real two-file manifest ↗</a></div>}<div className="api-disclaimer">Public reads need no API key. An API key alone cannot sign a GenLayer transaction; the buyer or provider wallet must sign.</div></details>
       </div><aside className="panel-aside guidance"><span className="mini-label">IMPORTANT BOUNDARY</span><h3>Local MCP, not a hosted bot.</h3><p>Your agent host runs the connector. Keep its signing key in that host&apos;s secret storage, never on this site or in a chat.</p><div className="aside-note">The agent should check that each transaction finalized and executed successfully, then read the updated job.</div></aside></div>}
       </div>
-      {job && <div className="job-detail"><div className="job-head"><div><span className="mini-label">FINALIZED CHAIN STATE · {version.toUpperCase()}</span><h3>{job.job_id}</h3><p>{explainStatus(job.status, version)}</p></div><div className="job-head-actions"><span className={`status status-${statusTone(job.status)}`}>{job.status}</span><button onClick={() => loadJob(job.job_id)} className="text-button">Refresh ↻</button></div></div><div className="job-fields"><div><span>Buyer</span><code title={job.buyer}>{short(job.buyer, 9, 7)}</code></div><div><span>Provider</span><code title={job.provider}>{short(job.provider, 9, 7)}</code></div><div><span>Due</span><strong>{utc(job.due_epoch)}</strong></div><div><span>Current version</span><strong>{job.current_version || "Awaiting delivery"}</strong></div></div><div className="job-body"><div><span className="mini-label">THE BRIEF</span><p>{job.brief}</p></div><div><span className="mini-label">ACCEPTANCE CRITERIA</span><ol>{job.criteria.map((item, index) => <li key={index}><span className={`criterion-indicator ${job.latest_statuses[index]?.toLowerCase() ?? ""}`}>{job.latest_statuses[index] ?? String(index + 1).padStart(2, "0")}</span>{item}</li>)}</ol></div></div>{submission && <div className="submission-row"><div><span className="mini-label">VERSION {submission.version} EVIDENCE</span><a href={submission.url} target="_blank" rel="noreferrer">{short(submission.url, 48, 12)} ↗</a><small>SHA-256 {submission.sha256} · {submission.size_bytes} bytes{submission.evidence_type === "PACKAGE" ? ` · ${submission.file_count || "pending"} files · ${submission.total_bytes || "pending"} source bytes` : ""}</small></div><span className={`status status-${statusTone(submission.verdict || "SUBMITTED")}`}>{submission.verdict || "AWAITING REVIEW"}</span></div>}<div className="job-bottom"><span>Scope SHA-256 <code>{short(job.scope_digest, 15, 14)}</code></span><span>Decision source <strong>{job.status === "SUBMITTED" ? "Pending" : job.decision_source || "Pending"}</strong></span><span>Submission deadline <strong>{utc(job.submission_deadline_epoch)}</strong></span>{version === "v3" && job.status === "SUBMITTED" && !!job.review_deadline_epoch && <span>Unreviewed close available after <strong>{utc(job.review_deadline_epoch)}</strong></span>}</div></div>}
-      {job?.job_id === exampleJob && <div className="proof-strip"><span className="proof-check" aria-hidden="true">✓</span><div><strong>This example happened on Studionet.</strong><p>Open its finalized review transaction and the recorded test steps.</p></div><a href={`/api/transactions/${EXAMPLE_REVIEW_TRANSACTIONS[version]}`} target="_blank" rel="noreferrer">Review transaction ↗</a><a href={`https://github.com/Leokings/deliveryos/blob/main/deployments/${version === "v3" ? "studionet_packages_v3.json" : version === "v2" ? "studionet_packages.json" : "studionet.json"}`} target="_blank" rel="noreferrer">Test record ↗</a></div>}
+      {job && <div className="job-detail"><div className="job-head"><div><span className="mini-label">FINALIZED CHAIN STATE · {version.toUpperCase()}</span><h3>{job.job_id}</h3><p>{explainStatus(job.status, version)}</p></div><div className="job-head-actions"><span className={`status status-${statusTone(job.status)}`}>{job.status}</span><button onClick={() => loadJob(job.job_id)} className="text-button">Refresh ↻</button></div></div><div className="job-fields"><div><span>Buyer</span><code title={job.buyer}>{short(job.buyer, 9, 7)}</code></div><div><span>Provider</span><code title={job.provider}>{short(job.provider, 9, 7)}</code></div><div><span>Due</span><strong>{utc(job.due_epoch)}</strong></div><div><span>Current version</span><strong>{job.current_version || "Awaiting delivery"}</strong></div></div><div className="job-body"><div><span className="mini-label">THE BRIEF</span><p>{job.brief}</p></div><div><span className="mini-label">ACCEPTANCE CRITERIA</span><ol>{job.criteria.map((item, index) => <li key={index}><span className={`criterion-indicator ${job.latest_statuses[index]?.toLowerCase() ?? ""}`}>{job.latest_statuses[index] ?? String(index + 1).padStart(2, "0")}</span>{item}</li>)}</ol></div></div>{submission && <div className="submission-row"><div><span className="mini-label">VERSION {submission.version} EVIDENCE</span><a href={submission.url} target="_blank" rel="noreferrer">{short(submission.url, 48, 12)} ↗</a><small>SHA-256 {submission.sha256} · {submission.size_bytes} bytes{submission.evidence_type === "PACKAGE" ? ` · ${submission.file_count || "pending"} files · ${submission.total_bytes || "pending"} source bytes` : ""}</small></div><span className={`status status-${statusTone(submission.verdict || "SUBMITTED")}`}>{submission.verdict || "AWAITING REVIEW"}</span></div>}<div className="job-bottom"><span>Scope SHA-256 <code>{short(job.scope_digest, 15, 14)}</code></span><span>Decision source <strong>{job.status === "SUBMITTED" ? "Pending" : job.decision_source || "Pending"}</strong></span><span>Submission deadline <strong>{utc(job.submission_deadline_epoch)}</strong></span>{(version === "v3" || version === "v4") && job.status === "SUBMITTED" && !!job.review_deadline_epoch && <span>{version === "v4" ? "Review cutoff" : "Unreviewed close available after"} <strong>{utc(job.review_deadline_epoch)}</strong></span>}</div></div>}
+      {job?.job_id === exampleJob && <div className="proof-strip"><span className="proof-check" aria-hidden="true">✓</span><div><strong>This example happened on Studionet.</strong><p>Open its finalized review transaction and the recorded test steps.</p></div><a href={`/api/transactions/${EXAMPLE_REVIEW_TRANSACTIONS[version]}`} target="_blank" rel="noreferrer">Review transaction ↗</a><a href={`https://github.com/Leokings/deliveryos/blob/main/deployments/${version === "v4" ? "studionet_packages_v4.json" : version === "v3" ? "studionet_packages_v3.json" : version === "v2" ? "studionet_packages.json" : "studionet.json"}`} target="_blank" rel="noreferrer">Test record ↗</a></div>}
       {job && <div className="share-strip"><div><strong>{job.status === "PROPOSED" ? "Ready to hand this job over?" : "Keep everyone on the same page."}</strong><span>{job.status === "PROPOSED" ? "Send the link to the named provider. Only their wallet can accept." : "Share this public, version-specific job link with a person or agent."}</span></div><button type="button" onClick={copyInviteLink}>Copy job link ↗</button></div>}
     </div></section>
 

@@ -8,8 +8,8 @@ import { chromium } from "playwright";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 const base = process.env.BASE_URL ?? "http://localhost:3001";
-const version = ["v1", "v2", "v3"].includes(process.env.DELIVERYOS_TEST_VERSION)
-  ? process.env.DELIVERYOS_TEST_VERSION : "v3";
+const version = ["v1", "v2", "v3", "v4"].includes(process.env.DELIVERYOS_TEST_VERSION)
+  ? process.env.DELIVERYOS_TEST_VERSION : "v4";
 const apiBase = version === "v1" ? "/api" : `/api/${version}`;
 const rpcUrl = "https://studio.genlayer.com/api";
 const account = privateKeyToAccount(generatePrivateKey());
@@ -83,7 +83,8 @@ try {
   await page.getByRole("heading", { name: jobId }).waitFor({ timeout: 30000 });
   const job = await (await page.request.get(`${base}${apiBase}/jobs/${jobId}`)).json();
   assert.equal(job.status, "PROPOSED");
-  assert.equal(job.protocol, version === "v3" ? "DELIVERYOS_PACKAGES_V3"
+  assert.equal(job.protocol, version === "v4" ? "DELIVERYOS_PACKAGES_V4"
+    : version === "v3" ? "DELIVERYOS_PACKAGES_V3"
     : version === "v2" ? "DELIVERYOS_PACKAGES_V2" : "DELIVERYOS_V1");
   assert.equal(job.buyer.toLowerCase(), account.address.toLowerCase());
   assert.equal(job.evidence_prefix, "https://raw.githubusercontent.com/Leokings/digital-deliverable-verifier/");

@@ -10,7 +10,7 @@ try {
   const errors = [];
   let recentRequests = 0;
   page.on("pageerror", (error) => errors.push(error.message));
-  page.on("request", (request) => { if (request.url().includes("/api/v3/jobs?limit=3")) recentRequests++; });
+  page.on("request", (request) => { if (request.url().includes("/api/v4/jobs?limit=3")) recentRequests++; });
   const home = await page.goto(base, { waitUntil: "networkidle" });
   assert.equal(home.status(), 200);
   await page.getByRole("heading", { name: /Work together/i }).waitFor();
@@ -25,7 +25,7 @@ try {
   await page.screenshot({ path: "artifacts/desktop.png", fullPage: true });
 
   await page.getByRole("button", { name: /Explore a completed example/ }).click();
-  await page.getByRole("heading", { name: "package_v3_b3a8798ee6a74d11" }).waitFor();
+  await page.getByRole("heading", { name: "package_v4_2d746c70318d4b36" }).waitFor();
   assert.match(await page.locator(".job-detail").innerText(), /ACCEPTED/);
   assert.match(await page.locator(".job-detail").innerText(), /MET/);
   assert.match(await page.locator(".job-detail").innerText(), /2 files/);
@@ -38,10 +38,10 @@ try {
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.getByRole("button", { name: /Copy job link/ }).click();
   const sharedLink = await page.evaluate(() => navigator.clipboard.readText());
-  assert.match(sharedLink, /\?version=v3&job=package_v3_b3a8798ee6a74d11$/);
+  assert.match(sharedLink, /\?version=v4&job=package_v4_2d746c70318d4b36$/);
   const invited = await browser.newPage();
   await invited.goto(sharedLink, { waitUntil: "networkidle" });
-  await invited.getByRole("heading", { name: "package_v3_b3a8798ee6a74d11" }).waitFor();
+  await invited.getByRole("heading", { name: "package_v4_2d746c70318d4b36" }).waitFor();
   assert.equal(await invited.getByRole("tab", { name: "Open invite" }).getAttribute("aria-selected"), "true");
   assert.match(await invited.locator(".next-step-copy").innerText(), /finished/);
   await invited.close();
@@ -52,7 +52,7 @@ try {
   await page.locator(".alert-error").getByText(/not found/i).waitFor();
   assert.equal(await page.locator(".job-detail").count(), 0, "failed lookup must not leave the previous accepted job visible");
   assert.equal(new URL(page.url()).searchParams.has("job"), false);
-  assert.equal((await page.request.get(`${base}/api/v3/jobs/audit_unknown_2026`)).status(), 404);
+  assert.equal((await page.request.get(`${base}/api/v4/jobs/audit_unknown_2026`)).status(), 404);
 
   await page.getByRole("tab", { name: "Create request" }).click();
   await page.locator(".panel-main").getByRole("button", { name: "Create request" }).click();
@@ -69,7 +69,7 @@ try {
   const spec = await page.request.get(`${base}/openapi.json`);
   assert.equal(spec.status(), 200);
   assert.equal((await spec.json()).openapi, "3.1.0");
-  assert.equal((await spec.json()).info.version, "3.0.0");
+  assert.equal((await spec.json()).info.version, "4.0.0");
   const llms = await page.request.get(`${base}/llms.txt`);
   assert.equal(llms.status(), 200);
   assert.match(await llms.text(), /not a public job marketplace/);
@@ -89,13 +89,17 @@ try {
   const v2Spec = await page.request.get(`${base}/api/v2/openapi`);
   assert.equal(v2Spec.status(), 200);
   assert.equal((await v2Spec.json()).info.version, "2.0.0");
-  await page.getByRole("button", { name: /Up to six files v3 · current/i }).click();
+  await page.getByRole("button", { name: /Up to six files v3 · legacy/i }).click();
   const v3Health = await page.request.get(`${base}/api/v3/health`);
   assert.equal(v3Health.status(), 200);
   assert.equal((await v3Health.json()).protocol, "DELIVERYOS_PACKAGES_V3");
+  await page.getByRole("button", { name: /Up to six files v4 · current/i }).click();
+  const v4Health = await page.request.get(`${base}/api/v4/health`);
+  assert.equal(v4Health.status(), 200);
+  assert.equal((await v4Health.json()).protocol, "DELIVERYOS_PACKAGES_V4");
   const manifest = "https://raw.githubusercontent.com/Leokings/deliveryos/d8a674033c477f0d2bcae59ab8049cb2bdd86e37/examples/package_v2/package.json";
   const prefix = "https://raw.githubusercontent.com/Leokings/deliveryos/";
-  const preflight = await page.request.get(`${base}/api/v3/packages/preflight?url=${encodeURIComponent(manifest)}&prefix=${encodeURIComponent(prefix)}&criteria=2`);
+  const preflight = await page.request.get(`${base}/api/v4/packages/preflight?url=${encodeURIComponent(manifest)}&prefix=${encodeURIComponent(prefix)}&criteria=2`);
   assert.equal(preflight.status(), 200);
   assert.equal((await preflight.json()).file_count, 2);
   await page.screenshot({ path: "artifacts/packages-desktop.png", fullPage: true });
@@ -130,7 +134,7 @@ try {
   assert.equal(await reduced.locator(".live-pulse").first().evaluate((el) => getComputedStyle(el).animationName), "none");
   await reduced.close();
   assert.deepEqual(errors, [], `browser errors: ${errors.join(", ")}`);
-  console.log("PASS v3-first UI, no initial recent-job RPC, real review proof, share/deep-link handoff, missing-job 404 and stale-state recovery, form defaults, agent setup, API discovery, v1/v2 legacy, v3 package preflight, mocked wallet switch, mobile width, reduced motion, no page errors");
+  console.log("PASS v4-first UI, no initial recent-job RPC, real review proof, share/deep-link handoff, missing-job 404 and stale-state recovery, form defaults, agent setup, API discovery, v1/v2/v3 legacy, v4 package preflight, mocked wallet switch, mobile width, reduced motion, no page errors");
   console.log(`Screenshots: artifacts/desktop.png and artifacts/mobile.png (${base})`);
 } finally {
   await browser.close();

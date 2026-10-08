@@ -6,11 +6,12 @@ Decisions-first protocol, public text evidence, bilateral wallet permissions,
 revision/deadline handling, a browser workspace, read-only HTTP/OpenAPI, and a
 local per-party MCP connector. V2 adds canonical, public multi-file evidence
 packages; v3 adds bounded pending-evidence correction and version-bound
-decisions. All versions remain decision-only. No escrow,
+decisions; v4 enforces a hard on-chain decision cutoff. All versions remain decision-only. No escrow,
 payments, private evidence, or production-grade guarantee. Read the
 [v1 test record](deployments/studionet.json) and
 [v2 test record](deployments/studionet_packages.json) before making a stronger claim.
 V3 evidence is in [its separate test record](deployments/studionet_packages_v3.json).
+V4 evidence is in [its separate test record](deployments/studionet_packages_v4.json).
 
 ## Built in v2: evidence packages for agent work
 

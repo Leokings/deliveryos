@@ -1,4 +1,4 @@
-"""Build and preflight DeliveryOS v2 public, commit-pinned evidence packages.
+"""Build and preflight DeliveryOS v2–v4 public, commit-pinned evidence packages.
 
 Publish source files at commit A, then publish the canonical manifest at a
 later commit B. The manifest cannot reference its own commit hash.

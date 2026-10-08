@@ -91,7 +91,10 @@ def test_v3_agent_suggests_bounded_correction():
         "review_deadline_epoch": 1,
     }
     # The contract, not this advisory list, remains the final clock authority.
-    assert "deliveryos_submit_delivery" not in service.next_actions("job_12345")["possible_tools"]
+    late_tools = service.next_actions("job_12345")["possible_tools"]
+    assert "deliveryos_submit_delivery" not in late_tools
+    assert "deliveryos_evaluate_delivery" in late_tools  # v3 has a soft cutoff.
+    assert "deliveryos_close_unreviewed" in late_tools
 
 
 def test_v3_decision_requires_exact_inspected_version():
@@ -105,6 +108,45 @@ def test_v3_decision_requires_exact_inspected_version():
         service.evaluate_delivery("job_12345", 1)
     result = service.accept_delivery("job_12345", 2)
     assert result["method"] == "accept_delivery"
+    assert sdk.writes[0][3] == ["job_12345", 2]
+
+
+def test_v4_agent_stops_decisions_after_cutoff(monkeypatch):
+    monkeypatch.setattr("deliveryos_agent.client.time.time", lambda: 100)
+    sdk = FakeSDK()
+    service = DeliveryOSClient(ADDRESS, client=sdk)
+    service.account = SimpleNamespace(address="0x" + "b" * 40)
+    service.get_job = lambda _: {
+        "status": "SUBMITTED", "buyer": "0x" + "b" * 40,
+        "provider": "0x" + "c" * 40, "protocol": "DELIVERYOS_PACKAGES_V4",
+        "current_version": 2, "review_deadline_epoch": 99,
+    }
+    result = service.next_actions("job_12345")
+    assert result["job_url_path"] == "/?version=v4&job=job_12345"
+    assert result["possible_tools"] == ["deliveryos_close_unreviewed"]
+    with pytest.raises(ValueError, match="Review cutoff passed"):
+        service.accept_delivery("job_12345", 2)
+    with pytest.raises(ValueError, match="Review cutoff passed"):
+        service.evaluate_delivery("job_12345", 2)
+    assert sdk.writes == []
+
+
+def test_v4_agent_can_review_current_version_before_cutoff(monkeypatch):
+    monkeypatch.setattr("deliveryos_agent.client.time.time", lambda: 100)
+    sdk = FakeSDK()
+    service = DeliveryOSClient(ADDRESS, client=sdk)
+    service.account = SimpleNamespace(address="0x" + "c" * 40)
+    service.get_job = lambda _: {
+        "status": "SUBMITTED", "buyer": "0x" + "b" * 40,
+        "provider": "0x" + "c" * 40, "protocol": "DELIVERYOS_PACKAGES_V4",
+        "current_version": 2, "review_deadline_epoch": 100,
+    }
+    assert service.next_actions("job_12345")["possible_tools"] == [
+        "deliveryos_submit_delivery", "deliveryos_evaluate_delivery",
+    ]
+    with pytest.raises(ValueError, match="expected_version"):
+        service.evaluate_delivery("job_12345")
+    service.evaluate_delivery("job_12345", 2)
     assert sdk.writes[0][3] == ["job_12345", 2]
 
 

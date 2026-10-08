@@ -1,0 +1,29 @@
+{
+  "network": "studionet",
+  "chain_id": 61999,
+  "contract_address": "0x4254924698AA7d4195BC2D734D3b767F6296Ff65",
+  "source_sha256_lf": "38786f6495162527cba7710ddf563da9a7380c77dbd110544d05580de2c12ede",
+  "manifest_url": "https://raw.githubusercontent.com/Leokings/deliveryos/d8a674033c477f0d2bcae59ab8049cb2bdd86e37/examples/package_v2/package.json",
+  "manifest_sha256": "4b33e4b5f89d0c3772298c50431fed8f1bc78e641125f4eafec518c44192c083",
+  "correction_review": {
+    "job_id": "package_v4_2d746c70318d4b36",
+    "expected_status": "ACCEPTED",
+    "expected_decision_source": "CONSENSUS",
+    "expected_criterion_statuses": ["MET", "MET"],
+    "first_version_manifest_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "first_version_verdict": "SUPERSEDED",
+    "corrected_version": 2,
+    "review_deadline_epoch": 1792343743,
+    "correction_spent_revision": false,
+    "correction_extended_review_window": false,
+    "transactions": {
+      "deploy": "0x42df7e1b4ceecbde7bc0e89a3e855b86f80d4ea813ce534ce1ad2ffefbba095a",
+      "propose": "0x02c5638d0cd862d35ca72ca09d063c33d3a9b1556ae29d457abf31db02c70c6c",
+      "accept_job": "0x67c2213317424a7e25239e1d9d69a2743945467411d0daf717597ffe28f425a2",
+      "bad_submit": "0x1b3d2e1057a2d8951933a93147edc6ad698eaa3d478bfeb9f8a2506546793f63",
+      "correction": "0xe9797a688756c149f24aa654abfe3adbffe1318a645917f592c20320fa00dbd1",
+      "review": "0x21a43a2d3685757bdf66dabd0c6f5b61fc398fad73b02c2926227b287aa2d069"
+    }
+  },
+  "notes": "All six Studionet writes finalized with successful execution; correction and the two-file validator review passed, and deployed code bytes matched this repository. Separate clock-controlled direct tests passed late approval/review rejection, on-cutoff acceptance/review, and overdue close. A seven-day late transaction has not yet been observed on Studionet."
+}

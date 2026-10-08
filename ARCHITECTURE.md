@@ -1,4 +1,4 @@
-# DeliveryOS v1/v2/v3 architecture
+# DeliveryOS v1–v4 architecture
 
 DeliveryOS is an agent-callable delivery lifecycle, not an AI agent or a generic
 LLM chat service. Existing buyer and provider agents (or humans) use signed
@@ -10,7 +10,7 @@ neutral acceptance decision.
 | Layer | Responsibility |
 | --- | --- |
 | HTTP/MCP adapter | Validate requests, prepare transactions, show status, notify callers; never decide the on-chain verdict. |
-| Evidence host | Serve publicly accessible, UTF-8 deliverable bytes. V1 accepts one bounded file; v2/v3 accept a canonical manifest with 1–6 bounded source files. |
+| Evidence host | Serve publicly accessible, UTF-8 deliverable bytes. V1 accepts one bounded file; v2–v4 accept a canonical manifest with 1–6 bounded source files. |
 | Intelligent Contract | Freeze the brief and criteria, authorize buyer/provider actions, enforce deadlines and revision limits, retrieve pinned evidence, determine a structured verdict by validator consensus, and persist the result. |
 | GenLayer validators | Independently fetch the same bytes and compare ordered per-criterion statuses, not free-form prose. |
 
@@ -94,6 +94,19 @@ assessed file set, so a requested revision cannot be disguised by a sequence
 of metadata-only corrections. Both `accept_delivery` and `evaluate_delivery`
 require an expected version: if a correction finalized before the decision,
 the stale transaction fails instead of acting on unseen evidence.
+
+## V4 hard decision cutoff
+
+V4 is another immutable contract with the same package and correction rules.
+Before executing either `accept_delivery` or `evaluate_delivery`, it checks
+the fixed `review_deadline_epoch` against the chain clock. The decision is
+allowed through the exact deadline and reverts afterward. Pending corrections
+already obey the same cutoff. Once the cutoff passes, any wallet may record
+`INCONCLUSIVE` with `close_unreviewed`; there is no automatic cron or timeout
+transaction. The v3 contract and its existing jobs retain the prior policy.
+Direct tests exercise both decision methods on and after the boundary; the
+live Studionet evidence covers deployment and the normal consensus path, not
+a seven-day-late transaction.
 
 ## Required evidence for a production claim
 

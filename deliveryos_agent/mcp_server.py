@@ -1,8 +1,8 @@
 """DeliveryOS MCP tools for existing buyer/provider agents.
 
 Run with: mcp run deliveryos_agent/mcp_server.py
-Set DELIVERYOS_CONTRACT_ADDRESS to the v1, v2 or v3 deployment and, for
-writes, DELIVERYOS_PRIVATE_KEY. V2/v3 jobs use public package manifests.
+Set DELIVERYOS_CONTRACT_ADDRESS to the v1, v2, v3 or v4 deployment and, for
+writes, DELIVERYOS_PRIVATE_KEY. V2/v3/v4 jobs use public package manifests.
 """
 
 import hashlib
@@ -94,14 +94,14 @@ def deliveryos_cancel_proposal(job_id: str) -> dict:
 
 @mcp.tool()
 def deliveryos_submit_delivery(job_id: str, evidence_url: str) -> dict:
-    """Provider: preflight and submit evidence; v3 can correct a pending package."""
+    """Provider: preflight and submit evidence; v3/v4 can correct a pending package."""
     return _service().submit_delivery(job_id, evidence_url)
 
 
 @mcp.tool()
 def deliveryos_build_package_manifest(evidence_prefix: str, source_commit: str,
                                       files: list[dict], criterion_count: int) -> dict:
-    """Prepare exact v2/v3 manifest bytes after committing 1-6 public source files.
+    """Prepare exact v2/v3/v4 manifest bytes after committing 1-6 public source files.
 
     Each file requires path, UTF-8 content, media_type, and zero-based criteria.
     Save manifest_text exactly (with its final newline), commit it separately,
@@ -123,19 +123,19 @@ def deliveryos_build_package_manifest(evidence_prefix: str, source_commit: str,
 @mcp.tool()
 def deliveryos_verify_package(manifest_url: str, evidence_prefix: str,
                               criterion_count: int) -> dict:
-    """Preflight a public v2/v3 manifest and every referenced file, without signing."""
+    """Preflight a public v2/v3/v4 manifest and every referenced file, without signing."""
     return verify_public_package(manifest_url, evidence_prefix, criterion_count)
 
 
 @mcp.tool()
 def deliveryos_accept_delivery(job_id: str, expected_version: int | None = None) -> dict:
-    """Buyer: accept inspected evidence. V3 requires its current_version to prevent a replacement race."""
+    """Buyer: accept inspected evidence. V3/V4 require current_version; v4 also enforces a hard review cutoff."""
     return _service().accept_delivery(job_id, expected_version) if expected_version is not None else _service().accept_delivery(job_id)
 
 
 @mcp.tool()
 def deliveryos_evaluate_delivery(job_id: str, expected_version: int | None = None) -> dict:
-    """Either party: request validator review. V3 requires the inspected current_version."""
+    """Either party: request validator review. V3/V4 require the inspected current_version; v4 has a hard cutoff."""
     return _service().evaluate_delivery(job_id, expected_version) if expected_version is not None else _service().evaluate_delivery(job_id)
 
 
@@ -147,7 +147,7 @@ def deliveryos_expire_undelivered(job_id: str) -> dict:
 
 @mcp.tool()
 def deliveryos_close_unreviewed(job_id: str) -> dict:
-    """Anyone: close a still-unreviewed delivery after its seven-day grace period."""
+    """Anyone: close a still-unreviewed delivery after its seven-day grace period; v4 also blocks late decisions."""
     return _service().close_unreviewed(job_id)
 
 
