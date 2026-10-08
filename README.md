@@ -53,10 +53,11 @@ v1 or v2 jobs. V2 remains readable at
    `deliveryos_verify_package` fetches every pinned source file, checks URL,
    length, UTF-8, SHA-256, format, and mapping, then submits the manifest hash.
 5. If a pending v3 manifest was wrong or became unavailable, submit a different
-   manifest before the fixed review deadline. The earlier version remains
+   manifest before the fixed correction cutoff. The earlier version remains
    visible as `SUPERSEDED`, and correcting it does not spend a requested
-   revision or restart the review clock. The browser and MCP connector preflight
-   the new public bytes; the contract re-verifies them at decision time.
+   revision or postpone when unreviewed closure becomes available. The browser
+   and MCP connector preflight the new public bytes; the contract re-verifies
+   them at decision time.
 6. The buyer may accept manually after GenLayer validators independently
    verify the package bytes, or either party can request validator assessment
    of the frozen criteria. The `decision_source` shows `BUYER` versus
@@ -100,8 +101,10 @@ methods plus the package tools described above:
 
 If no deliverable arrives by the due date, anyone can call
 `expire_undelivered`. If a submitted version remains unresolved past its
-review window, anyone can call `close_unreviewed`; this ends
-`INCONCLUSIVE`, never as a silent acceptance.
+review window, anyone can call `close_unreviewed`; a successful close ends
+`INCONCLUSIVE`, never as a silent acceptance. Closure is not automatic: until
+the close transaction finalizes, the buyer can still accept or either party
+can request validator review.
 
 ## Let an AI agent use it
 
@@ -189,7 +192,7 @@ The verified v1 address and transaction IDs are in
 [deployments/studionet.json](deployments/studionet.json). V2's separate source
 hash, deployed address, validator-reviewed acceptance, and buyer acceptance
 are in [deployments/studionet_packages.json](deployments/studionet_packages.json).
-V3's separate source hash, live correction, unchanged review deadline and
+V3's separate source hash, live correction, unchanged unreviewed-close threshold and
 consensus-reviewed acceptance are in
 [deployments/studionet_packages_v3.json](deployments/studionet_packages_v3.json).
 A second live run is not a

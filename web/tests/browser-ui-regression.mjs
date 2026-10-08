@@ -43,13 +43,22 @@ try {
   await page.getByRole("button", { name: "Connect wallet" }).click();
   await page.getByRole("button", { name: /Browser wallet ·/ }).waitFor();
   await page.getByRole("button", { name: /Correct pending evidence/ }).waitFor();
-  assert.match(await page.locator(".submit-box").innerText(), /does not extend the review deadline/);
+  assert.match(await page.locator(".submit-box").innerText(), /cutoff stays/);
+  assert.match(await page.locator(".job-detail").innerText(), /Unreviewed close available after/);
+  assert.equal(await page.getByRole("link", { name: /How to prepare a package/ }).getAttribute("href"),
+    "https://github.com/Leokings/deliveryos/blob/main/README.md#evidence-packages-v3-current-v2-legacy");
+  job.review_deadline_epoch = Math.floor(Date.now() / 1000) - 1;
+  await page.locator(".job-head-actions").getByRole("button", { name: /Refresh/ }).click();
+  await page.getByRole("button", { name: "Close unreviewed submission" }).waitFor();
+  assert.equal(await page.getByRole("button", { name: /Correct pending evidence/ }).count(), 0);
+  assert.match(await page.locator(".actions-card").innerText(), /Closing is available, not automatic/);
+  assert.match(await page.locator(".actions-card").innerText(), /buyer may still approve/);
   await page.getByPlaceholder("Paste a job reference").fill("audit_unknown_2026");
   await page.getByRole("button", { name: /Open job/ }).click();
   await page.locator(".alert-error").getByText(/not found/i).waitFor();
   assert.equal(await page.locator(".job-detail").count(), 0);
   assert.equal(new URL(page.url()).searchParams.has("job"), false);
-  console.log("PASS v3 correction CTA, wallet role, and stale-state cleanup after missing job");
+  console.log("PASS v3 correction CTA, accurate soft-close copy, package guide link, wallet role, and stale-state cleanup");
 } finally {
   await browser.close();
 }

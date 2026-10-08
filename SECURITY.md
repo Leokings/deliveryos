@@ -42,11 +42,15 @@ payments to its status field without a separate escrow design and review.
   the buyer's factual claims or a neutral AI verdict. Consumers must inspect
   `decision_source` and should not treat buyer acceptance as consensus.
 - V3 allows the provider to supersede a still-pending package before a fixed
-  review deadline; this cannot extend that deadline or spend a requested
-  revision. Old version URLs and hashes remain readable. A buyer's acceptance
+  correction cutoff; this cannot postpone unreviewed closure eligibility or
+  spend a requested revision. Old version URLs and hashes remain readable. A buyer's acceptance
   and either party's validator-review call include an expected version. If a
   correction finalizes first, the stale decision reverts instead of examining
   or accepting a different version.
+- The unreviewed-close threshold is not an automatic or hard decision cutoff.
+  After it passes, anyone may close a pending submission as `INCONCLUSIVE`;
+  until a close transaction finalizes, the buyer may still accept or either
+  party may request validator review.
 - Only `raw.githubusercontent.com` and full commit-SHA evidence URLs are
   accepted. The buyer approves the repository prefix. The agent connector
   refuses redirects; GenLayer validators check the final fetched byte hash.

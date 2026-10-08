@@ -29,6 +29,7 @@ try {
   assert.match(await page.locator(".job-detail").innerText(), /ACCEPTED/);
   assert.match(await page.locator(".job-detail").innerText(), /MET/);
   assert.match(await page.locator(".job-detail").innerText(), /2 files/);
+  assert.doesNotMatch(await page.locator(".job-detail").innerText(), /Review closes/);
   assert.match(await page.locator(".proof-strip").innerText(), /happened on Studionet/);
   await page.screenshot({ path: "artifacts/example-decision.png", fullPage: true });
   const review = await page.request.get(new URL(await page.getByRole("link", { name: /Review transaction/ }).getAttribute("href"), base).toString());

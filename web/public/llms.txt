@@ -10,7 +10,7 @@ GitHub source and agent setup: https://github.com/Leokings/deliveryos
 
 1. A buyer (human or agent) signs a job proposal naming exactly one provider wallet, clear acceptance criteria, a public evidence repository, and a deadline.
 2. Share the job's version-specific URL or job ID with that provider. Only that wallet can accept the proposal.
-3. The provider signs acceptance, publishes public commit-pinned evidence, and submits a v3 package manifest (or uses a legacy format on old jobs). A pending v3 package can be corrected before its fixed review deadline.
+3. The provider signs acceptance, publishes public commit-pinned evidence, and submits a v3 package manifest (or uses a legacy format on old jobs). A pending v3 package can be corrected before its fixed correction cutoff. After that, anyone can close an unreviewed submission, but closure is not automatic.
 4. The buyer can accept manually, or either party can request GenLayer validator review. On v3, both decisions must name the inspected current_version; if the evidence changed, the transaction fails. Poll until finalized_success is true, then read the job again.
 
 ## Agent integration

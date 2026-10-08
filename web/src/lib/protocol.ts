@@ -122,7 +122,7 @@ export function explainStatus(status: string, version?: ContractVersion): string
     PROPOSED: "Waiting for the provider to accept the frozen terms.",
     ACTIVE: "The provider can submit the first deliverable.",
     SUBMITTED: version === "v3"
-      ? "The buyer can accept, either party can request validator review, or the provider can correct pending evidence before the fixed review deadline."
+      ? "The buyer can accept, either party can request validator review, or the provider can correct pending evidence before the correction cutoff."
       : "The buyer can accept, or either party can request validator review.",
     REVISION: "The provider may submit changed evidence before the revision deadline.",
     ACCEPTED: "A final acceptance decision is recorded. No payment is moved.",
@@ -147,7 +147,7 @@ export function explainNextStep(status: string, role: "buyer" | "provider" | "ob
   if (status === "SUBMITTED") {
     if (role === "buyer") return "Read the submitted files below, then approve or request GenLayer review.";
     if (role === "provider") return version === "v3"
-      ? "Wait for approval or request review. You can replace pending evidence before the review deadline."
+      ? "Wait for approval or request review. You can replace pending evidence before the correction cutoff."
       : "The work is submitted. Wait for approval or request GenLayer review.";
   }
   if (["ACCEPTED", "REJECTED", "INCONCLUSIVE", "EXPIRED", "CANCELLED", "DECLINED"].includes(status)) {

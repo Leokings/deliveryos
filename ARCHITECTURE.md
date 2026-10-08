@@ -85,8 +85,11 @@ submit a different manifest while a version is `SUBMITTED`; the old record is
 marked `SUPERSEDED` but keeps its URL and hash. The correction does not use a
 revision allowance. The first submission in each review cycle freezes
 `review_deadline_epoch`, so repeated corrections cannot indefinitely delay
-`close_unreviewed`. Once the deadline passes, unresolved work closes
-`INCONCLUSIVE`, never accepted. `last_reviewed_fingerprint` tracks the last
+`close_unreviewed`. The date ends the correction window and makes unreviewed
+closure available; it does not close the job automatically. Until someone
+successfully calls `close_unreviewed`, the buyer can still accept or either
+party can request validator review. A successful close records `INCONCLUSIVE`.
+`last_reviewed_fingerprint` tracks the last
 assessed file set, so a requested revision cannot be disguised by a sequence
 of metadata-only corrections. Both `accept_delivery` and `evaluate_delivery`
 require an expected version: if a correction finalized before the decision,
