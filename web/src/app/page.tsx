@@ -67,6 +67,7 @@ export default function HomePage() {
   const [lookupId, setLookupId] = useState("");
   const [job, setJob] = useState<Job | null>(null);
   const [submission, setSubmission] = useState<Submission | null>(null);
+  const initialRouteHandled = useRef(false);
   const lookupSequence = useRef(0);
   const recentSequence = useRef(0);
   const [recent, setRecent] = useState<RecentJobs | null>(null);
@@ -109,7 +110,7 @@ export default function HomePage() {
     setVersion(next);
     setJob(null); setSubmission(null); setRecent(null); setRecentError(""); setLookupId("");
     setError(""); setNotice(""); setTxHash(""); setTxStatus(null); setEvidenceUrl("");
-    window.history.replaceState(null, "", `?version=${next}`);
+    window.history.replaceState(null, "", next === "v4" ? window.location.pathname : `?version=${next}`);
   }
 
   const refreshRecent = useCallback(async () => {
@@ -129,7 +130,7 @@ export default function HomePage() {
     setJob(null);
     setSubmission(null);
     setLookupId(id);
-    window.history.replaceState(null, "", `?version=${version}`);
+    window.history.replaceState(null, "", version === "v4" ? window.location.pathname : `?version=${version}`);
     if (!JOB_ID_PATTERN.test(id)) {
       setError("Use a job ID of 8–64 letters, numbers, underscores or hyphens.");
       return;
@@ -150,6 +151,16 @@ export default function HomePage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get("job");
+    if (!initialRouteHandled.current) {
+      initialRouteHandled.current = true;
+      // Old landing bookmarks should open the current protocol. A link to an
+      // actual historical job must retain its version so it remains readable.
+      if (!fromUrl && (params.get("version") === "v2" || params.get("version") === "v4")) {
+        window.history.replaceState(null, "", window.location.pathname);
+        return;
+      }
+    }
     // Older v1 invite links had no version parameter. Preserve those links.
     const requested = params.get("version") === "v1" || (!params.has("version") && params.has("job"))
       ? "v1" : params.get("version") === "v2" ? "v2" : params.get("version") === "v3" ? "v3" : "v4";
@@ -160,7 +171,6 @@ export default function HomePage() {
       setVersion(requested);
       return;
     }
-    const fromUrl = params.get("job");
     if (fromUrl && JOB_ID_PATTERN.test(fromUrl)) {
       setTab("manage");
       void loadJob(fromUrl).then(() => {

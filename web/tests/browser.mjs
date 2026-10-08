@@ -14,6 +14,18 @@ try {
   const home = await page.goto(base, { waitUntil: "networkidle" });
   assert.equal(home.status(), 200);
   await page.getByRole("heading", { name: /Work together/i }).waitFor();
+  const canonical = await browser.newPage();
+  await canonical.goto(`${base}/?version=v2`, { waitUntil: "networkidle" });
+  assert.equal(new URL(canonical.url()).search, "", "a stale no-job v2 URL should become the current v4 root");
+  await canonical.locator(".format-details summary").click();
+  await canonical.getByRole("button", { name: /Up to six files v2 · legacy/i }).click();
+  assert.equal(new URL(canonical.url()).searchParams.get("version"), "v2", "legacy browsing remains available by explicit choice");
+  await canonical.getByRole("button", { name: /Up to six files v4 · current/i }).click();
+  assert.equal(new URL(canonical.url()).search, "", "returning to v4 should restore the clean root URL");
+  await canonical.goto(`${base}/?version=v2&job=package_f2131d0cd28244b2`, { waitUntil: "networkidle" });
+  await canonical.getByRole("heading", { name: "package_f2131d0cd28244b2" }).waitFor();
+  assert.equal(new URL(canonical.url()).searchParams.get("version"), "v2", "historical job links must remain versioned");
+  await canonical.close();
   assert.equal(recentRequests, 0, "landing view should not spend Studionet RPC calls on recent jobs");
   assert.match(await page.locator(".hero-copy").innerText(), /no wallet needed/i);
   assert.match(await page.locator(".format-details").innerText(), /up to 6 public files/i);
