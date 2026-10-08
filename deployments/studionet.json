@@ -1,0 +1,76 @@
+{
+  "network": "studionet",
+  "chain_id": 61999,
+  "rpc_url": "https://studio.genlayer.com/api",
+  "contract_address": "0xef13Bfe9A9B0b4cE7EB4AfC2d8EDd8A6c6D43e40",
+  "source_sha256_lf": "64f14a78a7ba4463193473b06bb20523da4dd2da933a838fc4f00cad331fdde9",
+  "acceptance_test": {
+    "job_id": "deliveryos_cb5bcede778b4248",
+    "evidence_url": "https://raw.githubusercontent.com/Leokings/digital-deliverable-verifier/c58779c534ddae9f127bffc2e06584b6f56a9f9a/tests/fixtures/installation-guide.txt",
+    "evidence_sha256": "ab218cdca2b0765c780b3983c9837c4ebf1eb24ddc7c0f5c00b6b87ddb9d5d49",
+    "evidence_size_bytes": 655,
+    "expected_status": "ACCEPTED",
+    "expected_decision_source": "CONSENSUS",
+    "expected_criterion_statuses": ["MET"],
+    "transactions": {
+      "deploy": "0x7d51fbf7c693699b4fffe2a5013e8647312692427977539c93fbd4a7e5fb217a",
+      "propose": "0x3b6090c06cf7171bc4c04b23641d71f3cadf16371bc39b45075bf14f20050a59",
+      "accept_job": "0xbfa991491c6e64ae51d201a3f2abcb82c9e440aedfb1880357f1dc654786eeda",
+      "submit": "0xb6247329e34bba9a6e88120e4e5305d10f69ddc526a689f2f2b91e087210afde",
+      "review": "0x058b7551a29bb6595ef9767cf2ff5050d129e71bc42e57429cb565e25e592424"
+    }
+  },
+  "manual_agent_test": {
+    "job_id": "agent_eb0f368ccda34d05a6",
+    "evidence_sha256": "ab218cdca2b0765c780b3983c9837c4ebf1eb24ddc7c0f5c00b6b87ddb9d5d49",
+    "expected_status": "ACCEPTED",
+    "expected_decision_source": "BUYER",
+    "transactions": {
+      "propose": "0xd40f0f8880fef043030c430a499f1750d2885dc3c06d4bdce02673f06428bdd3",
+      "accept_job": "0xa4cdf2dd96a51aaf3dd10a4cd15ee7d5a5779c9a0099ae72a4db1d738473357c",
+      "submit": "0x223c354180f55bbbd71c75bb29508ea291c9e0c31fdfce7539530436e4870356",
+      "accept_delivery": "0xe53091d7070c907b4baff0e538b67aa4d02a06d13a7cf7fed016d8b5139ae56f"
+    }
+  },
+  "revision_test": {
+    "job_id": "revision_a51b9f3d1c094763",
+    "expected_status": "REJECTED",
+    "expected_decision_source": "CONSENSUS",
+    "version_1": {
+      "evidence_sha256": "ab218cdca2b0765c780b3983c9837c4ebf1eb24ddc7c0f5c00b6b87ddb9d5d49",
+      "criterion_statuses": ["NOT_MET"],
+      "verdict": "REVISION"
+    },
+    "version_2": {
+      "evidence_sha256": "cec17f27a3b8b9f0607b85ea4e1674e3212051cf6365ddbecfa90b7d095b3300",
+      "criterion_statuses": ["NOT_MET"],
+      "verdict": "REJECTED"
+    },
+    "transactions": {
+      "propose": "0x007153522dc5753f2e38b6dac5b304cf0301fe1899ffe9d1aa090be18a1ee4dd",
+      "accept_job": "0x552945a1f95c040c2b73620cac92c6abd8cb6be5c69cafb6db6d83925a2498bb",
+      "submit_v1": "0xa7f04d744f4210d1ed0f00d1abfe22c8c6e86d3f95fa937ac96cc79d377db85b",
+      "review_v1": "0xe8215d35d836c9dcc3649cc1b888c4a80c61dc45a13cd6a994f7adc8a77aec38",
+      "submit_v2": "0x5a50f263ebdd562d0f19402f0e1dc038aa3265114c8cbe14307157312227372c",
+      "review_v2": "0x2b3a8c18c8aece6f14e5c3f836de1266d2810ac25af5a277d40edd0e72a2e45b"
+    }
+  },
+  "expiry_test": {
+    "job_id": "expiry_9e9bce3742f6475d84",
+    "due_epoch": 1791464439,
+    "expected_status": "EXPIRED",
+    "expected_decision_source": "DEADLINE",
+    "transactions": {
+      "propose": "0xd4e096173eefd38fcea5fb9d7c1a80458d125e2102de450881ed2af6d9ba8c61",
+      "accept_job": "0x617e59f2660c08638f8837f2cc92f91614702e6f61b8352adca6a46ce19b7031",
+      "premature_expiry": "0xc91e97bd286205d8a3eb5d6c00f8e60c5a14a8334f4534c11c2a2f1c9e898ae0",
+      "expiry": "0xa869c0b1ebc61ba087c9992bbccae39b95c5d7cf88d55a670f9c8c36f8afb56c"
+    }
+  },
+  "browser_wallet_test": {
+    "job_id": "browser_7c441f57549d4195",
+    "buyer": "0x2AdBA5F9A3fA53e17D17e834E620A7E532179037",
+    "expected_status": "PROPOSED",
+    "transaction": "0xcd404f7b2d80384d48e3aaff680545c68662053383b848ce05f86908e4a82994"
+  }
+}
