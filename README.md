@@ -222,6 +222,12 @@ before returning a transaction hash, so it is **not** counted as a successful
 production write for this revision. The interface now gives a plain-language
 retry warning; check wallet activity and job state before trying again.
 
+The v3 release passed the public-site browser suite and a fresh wallet-signed
+`create_job` through the production site. The v3 job and finalized successful
+transaction are in [the v3 test record](deployments/studionet_packages_v3.json).
+This verifies the browser's write path for v3, not every wallet extension or
+every future Studionet response.
+
 See [ARCHITECTURE.md](ARCHITECTURE.md) for protocol boundaries and explicit
 limitations. In particular, SHA-256 proves the bytes examined, not that a
 seller's factual claims are true. GenLayer AI judgments can still be

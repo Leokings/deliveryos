@@ -26,5 +26,25 @@
       "review": "0xd99c11024f0a7036763e713bf6b602788e5c97f8dfe831a4b757d8ad93e75e55"
     }
   },
+  "browser_write_production": {
+    "site": "https://deliveryos-tau-wheat.vercel.app/",
+    "deployment_id": "dpl_FpZraWk5sG9Y8kErWofSK8wkeZQ3",
+    "source_commit": "b29c44ca63b594ea8c6b73b4e8b7c19fdfb1f6d4",
+    "job_id": "v3_browser_79acf66109904c33",
+    "buyer": "0xeBa1fF7Fd432b66202F9D76Fb5B0867bf43e04a6",
+    "transaction": "0x1e8553bbf0e91b007579bc5006373a1c0047586d1c351a92d5e707e1323e1a30",
+    "receipt": {
+      "status": "FINALIZED",
+      "consensus_result": "MAJORITY_AGREE",
+      "execution_result": "SUCCESS",
+      "finalized_success": true
+    },
+    "chain_state": {
+      "protocol": "DELIVERYOS_PACKAGES_V3",
+      "status": "PROPOSED",
+      "evidence_prefix": "https://raw.githubusercontent.com/Leokings/digital-deliverable-verifier/"
+    },
+    "note": "A fresh ephemeral browser wallet signed create_job through the public production site. The receipt finalized successfully and the v3 job API matched. No test key was stored."
+  },
   "notes": "The full-consensus test asserted finalized successful execution at each write, inspected the corrected job and both version records, and confirmed the deployed code hash. A deliberately wrong first SHA was stored but never accepted; version 2 corrected it before review. Version-bound stale decision rejection and fixed deadline behavior also passed direct tests. Studionet's hourly RPC quota interrupted an earlier test attempt and is not removed by this contract."
 }
