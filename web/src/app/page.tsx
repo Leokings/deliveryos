@@ -5,7 +5,7 @@ import { createClient } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
 import {
   ADDRESS_PATTERN, CHAIN_ID, EXPLORER, JOB_ID_PATTERN,
-  TX_HASH_PATTERN, contractFor, explainNextStep, explainStatus, repositoryPrefixFromInput, validateEvidenceUrl,
+  TX_HASH_PATTERN, contractFor, explainNextStep, explainStatus, explainWriteFailure, repositoryPrefixFromInput, validateEvidenceUrl,
   type ContractVersion, type Job, type Submission,
 } from "@/lib/protocol";
 
@@ -289,7 +289,7 @@ export default function HomePage() {
             if (!current.finalized_success) throw new Error(`Transaction finalized without successful execution (${current.consensus_result} / ${current.execution_result}).`);
             setNotice("Transaction finalized and executed. The job below is read from finalized chain state.");
             await loadJob(nextJobId ?? job?.job_id ?? "");
-            await refreshRecent();
+            if (tab === "explore") await refreshRecent();
             return;
           }
         } catch (cause) {
@@ -299,7 +299,7 @@ export default function HomePage() {
       }
       setNotice("Still pending. Save the transaction hash and use Check status; do not submit the same action again.");
     } catch (cause) {
-      setError((cause as Error).message || "The wallet rejected the transaction.");
+      setError(explainWriteFailure((cause as Error).message));
       if (submitted) setNotice("A transaction hash was returned. Check its status before any retry.");
     } finally {
       setBusy(false);

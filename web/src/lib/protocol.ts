@@ -147,3 +147,13 @@ export function explainNextStep(status: string, role: "buyer" | "provider" | "ob
   }
   return "Read this public job below. Connect the invited wallet to take an action.";
 }
+
+export function explainWriteFailure(message: string): string {
+  if (/rate limit exceeded|\b429\b/i.test(message)) {
+    return "Studionet has reached its request limit. Check this job and your wallet activity before retrying later.";
+  }
+  if (/\b50[23]\b|failed to fetch|network error/i.test(message)) {
+    return "Studionet is temporarily unavailable. Check this job and your wallet activity before retrying.";
+  }
+  return message || "The wallet did not complete the transaction. Check its activity before retrying.";
+}

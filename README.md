@@ -197,6 +197,14 @@ transaction and chain-state evidence are in the v2 test record. This does not
 prove compatibility with every browser wallet or guarantee AI decisions on
 unseen evidence.
 
+The simplified UI revision also passed the public-site browser suite. Its
+normal GitHub-link form produced a finalized Studionet proposal through a
+local production-style build; the exact transaction and job are in the same
+test record. A follow-up public-site write hit Studionet's hourly RPC limit
+before returning a transaction hash, so it is **not** counted as a successful
+production write for this revision. The interface now gives a plain-language
+retry warning; check wallet activity and job state before trying again.
+
 See [ARCHITECTURE.md](ARCHITECTURE.md) for protocol boundaries and explicit
 limitations. In particular, SHA-256 proves the bytes examined, not that a
 seller's factual claims are true. GenLayer AI judgments can still be

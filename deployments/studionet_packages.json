@@ -47,5 +47,24 @@
     "receipt": { "status": "FINALIZED", "consensus_result": "MAJORITY_AGREE",
       "execution_result": "SUCCESS", "finalized_success": true },
     "note": "Ephemeral wallet created a v2 job through the public Vercel UI; public transaction and job API reads matched. No test key was stored."
+  },
+  "simplified_ui_smoke": {
+    "source_commit": "85d8fd92c2012f529d769261b566147f96c7f256",
+    "local_production_build": {
+      "job_id": "v2_browser_bcfc6dff60a64431",
+      "buyer": "0xcE5Fc70d8DDefe1eE39D952beB0333735325F74e",
+      "transaction": "0x087ac4f6acadec71cc44af5ef75e7b40d1f0fdebad42b0e0505b87f21ef8f5d6",
+      "receipt": { "status": "FINALIZED", "consensus_result": "MAJORITY_AGREE",
+        "execution_result": "SUCCESS", "finalized_success": true },
+      "job_status": "PROPOSED",
+      "evidence_prefix": "https://raw.githubusercontent.com/Leokings/digital-deliverable-verifier/",
+      "note": "Ephemeral browser wallet signed through a local production-style build, and the Studionet job read matched the normalized GitHub prefix. No test key was stored."
+    },
+    "public_site": {
+      "url": "https://deliveryos-tau-wheat.vercel.app/",
+      "deployment_id": "dpl_Dv998HzxaE3dP6HptzdjRx3wmZvi",
+      "browser_read_suite": "PASS: first-time flow, finalized example and receipt, invitation deep link, API, package preflight, wallet switch, mobile layout, reduced motion, no page errors",
+      "signed_write_attempt": "Studionet returned an hourly RPC rate-limit error before the browser wallet returned a transaction hash; no production write success is claimed for this UI revision. Do not retry blindly."
+    }
   }
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { JOB_ID_PATTERN, TX_HASH_PATTERN, validateEvidenceUrl, repositoryPrefixFromInput, explainStatus, explainNextStep } from "../src/lib/protocol.ts";
+import { JOB_ID_PATTERN, TX_HASH_PATTERN, validateEvidenceUrl, repositoryPrefixFromInput, explainStatus, explainNextStep, explainWriteFailure } from "../src/lib/protocol.ts";
 
 const base = "https://raw.githubusercontent.com/Leokings/digital-deliverable-verifier/";
 const commit = "c58779c534ddae9f127bffc2e06584b6f56a9f9a";
@@ -61,4 +61,11 @@ test("next-step copy matches the wallet role and status", () => {
   assert.match(explainNextStep("PROPOSED", "provider"), /accept or decline/);
   assert.match(explainNextStep("SUBMITTED", "buyer"), /approve or request/);
   assert.match(explainNextStep("ACCEPTED", "observer"), /finished/);
+});
+
+test("temporary Studionet write failures have safe, plain-language guidance", () => {
+  assert.match(explainWriteFailure("eth_sendRawTransaction: Rate limit exceeded: 500 requests per hour"), /Check this job and your wallet activity/);
+  assert.doesNotMatch(explainWriteFailure("eth_sendRawTransaction: Rate limit exceeded"), /eth_sendRawTransaction/);
+  assert.match(explainWriteFailure("HTTP 503"), /temporarily unavailable/);
+  assert.equal(explainWriteFailure("Wallet rejected"), "Wallet rejected");
 });
