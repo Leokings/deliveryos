@@ -29,7 +29,8 @@ async def test_mcp_exposes_read_and_signed_write_tools(monkeypatch):
         assert {"deliveryos_identity", "deliveryos_get_job",
                 "deliveryos_submit_delivery", "deliveryos_evaluate_delivery",
                 "deliveryos_transaction_status", "deliveryos_get_job_count",
-                "deliveryos_get_job_id"} <= names
+                "deliveryos_get_job_id", "deliveryos_build_package_manifest",
+                "deliveryos_verify_package"} <= names
 
         job = await client.call_tool("deliveryos_get_job", {"job_id": "job_12345"})
         assert job.is_error is False
@@ -38,3 +39,14 @@ async def test_mcp_exposes_read_and_signed_write_tools(monkeypatch):
         write = await client.call_tool("deliveryos_evaluate_delivery", {"job_id": "job_12345"})
         assert write.is_error is False
         assert write.content and "SUBMITTED_TO_NETWORK" in write.content[0].text
+
+        prepared = await client.call_tool("deliveryos_build_package_manifest", {
+            "evidence_prefix": "https://raw.githubusercontent.com/Leokings/deliveryos/",
+            "source_commit": "a" * 40,
+            "files": [{"path": "proof.txt", "content": "Proof text\n",
+                       "media_type": "text/plain", "criteria": [0]}],
+            "criterion_count": 1,
+        })
+        assert prepared.is_error is False
+        assert "manifest_text" in prepared.content[0].text
+        assert "Proof text" not in prepared.content[0].text

@@ -8,9 +8,11 @@ import { chromium } from "playwright";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 const base = process.env.BASE_URL ?? "http://localhost:3001";
+const version = process.env.DELIVERYOS_TEST_VERSION === "v2" ? "v2" : "v1";
+const apiBase = version === "v2" ? "/api/v2" : "/api";
 const rpcUrl = "https://studio.genlayer.com/api";
 const account = privateKeyToAccount(generatePrivateKey());
-const jobId = `browser_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`;
+const jobId = `${version}_browser_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`;
 const providerAddress = "0x1563915e194D8CfBA1943570603F7606A3115508";
 
 async function rpc(method, params) {
@@ -39,7 +41,9 @@ try {
       nonce: Number(BigInt(tx.nonce)),
       chainId: Number(BigInt(tx.chainId)),
     });
-    return await rpc("eth_sendRawTransaction", [serialized]);
+    const hash = await rpc("eth_sendRawTransaction", [serialized]);
+    console.log("DELIVERYOS_BROWSER_TX", hash);
+    return hash;
   });
   await page.addInitScript((address) => {
     let chain = "0x1";
@@ -53,7 +57,8 @@ try {
       },
     };
   }, account.address);
-  await page.goto(base, { waitUntil: "networkidle" });
+  await page.goto(version === "v2" ? `${base}/?version=v2` : base, { waitUntil: "networkidle" });
+  if (version === "v2") await page.getByRole("button", { name: /Evidence package v2/i }).waitFor();
   await page.getByRole("button", { name: "Connect wallet" }).click();
   await page.getByRole("button", { name: /Browser wallet ·/ }).waitFor();
   await page.getByRole("tab", { name: "Start a job" }).click();
@@ -65,18 +70,21 @@ try {
   const due = new Date(Date.now() + 3 * 86400_000);
   const local = new Date(due.getTime() - due.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   await page.locator('input[type="datetime-local"]').fill(local);
-  await page.getByRole("button", { name: /Create job/ }).click();
-  await page.locator(".tx-line code").waitFor({ timeout: 45000 });
-  const displayed = await page.locator(".tx-line code").innerText();
   console.log("DELIVERYOS_BROWSER_JOB", jobId);
+  await page.getByRole("button", { name: /Create job/ }).click();
+  await page.locator(".tx-line code, .alert-error").first().waitFor({ timeout: 60000 });
+  const alert = page.locator(".alert-error");
+  if (await alert.isVisible()) throw new Error(`UI write failed: ${await alert.innerText()}`);
+  const displayed = await page.locator(".tx-line code").innerText();
   console.log("DELIVERYOS_BROWSER_BUYER", account.address);
   console.log("DELIVERYOS_BROWSER_TX_SHORT", displayed);
   await page.locator(".tx-good").waitFor({ timeout: 240000 });
   await page.getByRole("heading", { name: jobId }).waitFor({ timeout: 30000 });
-  const job = await (await page.request.get(`${base}/api/jobs/${jobId}`)).json();
+  const job = await (await page.request.get(`${base}${apiBase}/jobs/${jobId}`)).json();
   assert.equal(job.status, "PROPOSED");
+  assert.equal(job.protocol, version === "v2" ? "DELIVERYOS_PACKAGES_V2" : "DELIVERYOS_V1");
   assert.equal(job.buyer.toLowerCase(), account.address.toLowerCase());
-  console.log("PASS browser EIP-1193 wallet signed a real Studionet job; finalized execution and chain state verified");
+  console.log(`PASS ${version} browser EIP-1193 wallet signed a real Studionet job; finalized execution and chain state verified`);
 } finally {
   await browser.close();
 }

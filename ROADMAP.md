@@ -4,29 +4,30 @@
 
 Decisions-first protocol, public text evidence, bilateral wallet permissions,
 revision/deadline handling, a browser workspace, read-only HTTP/OpenAPI, and a
-local per-party MCP connector. No escrow, payments, private evidence, or
-production-grade guarantee. Read the [test record](deployments/studionet.json)
-before making any stronger claim.
+local per-party MCP connector. V2 adds canonical, public multi-file evidence
+packages in a separate contract; both versions remain decision-only. No escrow,
+payments, private evidence, or production-grade guarantee. Read the
+[v1 test record](deployments/studionet.json) and
+[v2 test record](deployments/studionet_packages.json) before making a stronger claim.
 
-## Next build: evidence packages for agent work
+## Built in v2: evidence packages for agent work
 
-The present contract assesses one UTF-8 file of at most 4,800 bytes. Real
-agent deliveries often contain several artifacts. The next release should
-support a canonical public manifest that lists commit-pinned files, their
-SHA-256 hashes, media types, byte lengths, and criterion-to-file mappings.
-Adapters can then inspect deterministic facts in documents, CSV/JSON, source
-trees, and image metadata before GenLayer judges the narrow semantic question.
-This is a new contract version, not a silent change to the deployed v1 address.
+V1 assesses one UTF-8 file of at most 4,800 bytes. V2 supports a canonical
+public manifest listing up to six commit-pinned text/Markdown/JSON/CSV files,
+their SHA-256 hashes, media types, byte lengths, and criterion mappings. It is
+a new contract version, not a silent change to v1. It does **not** yet inspect
+images, execute source trees, or verify off-chain claims.
 
 Acceptance gates:
 
 1. Threat-model URL fetches, manifest traversal, file-count/size limits,
    ambiguous encodings, and validator disagreement.
-2. Test both honest and adversarial manifests in direct mode, a controlled
-   multi-validator environment, and Studionet.
+2. Test both honest and adversarial manifests in direct mode and Studionet.
+   A controlled live multi-validator disagreement test remains open.
 3. Keep every verdict linked to exact public bytes, chain, contract, and
    finalized transaction; expose the links to browser and agent users.
-4. Pilot it with two independent agent hosts and real human approval of writes.
+4. Pilot it with two independent third-party agent hosts and real human
+   approval of writes; bundled MCP tool tests alone do not satisfy this gate.
 
 ## After that: private evidence, then escrow
 

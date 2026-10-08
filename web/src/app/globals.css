@@ -89,6 +89,12 @@ h1 em,h2 em{font-family:Georgia,serif;font-weight:400;font-style:italic;color:#7
 .workspace-intro h2{margin-bottom:9px}
 .network-chip{background:#e2f2ca;border:1px solid #d2e9b8;border-radius:100px;display:flex;gap:9px;align-items:center;padding:11px 14px;color:#4e7635;font-size:12px;font-weight:800;white-space:nowrap}
 .network-chip .live-pulse{width:7px;height:7px}
+.protocol-picker{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-5px 0 18px}
+.protocol-picker button{border:1px solid #cadbc7;border-radius:999px;background:#f9fbf4;color:#55705b;padding:10px 15px;font-size:12px;font-weight:800;transition:background .2s,border-color .2s,transform .2s}
+.protocol-picker button:hover{transform:translateY(-1px);border-color:#8bae78}
+.protocol-picker button.selected{background:#17443b;border-color:#17443b;color:#fff}
+.protocol-picker button span{font-family:Consolas,monospace;font-size:10px;opacity:.72;margin-left:5px}
+.protocol-picker p{color:#6f8372;font-size:11px;line-height:1.4;margin:0 0 0 8px;max-width:480px}
 .workspace-shell{position:relative;background:#fff;border-radius:22px;box-shadow:0 25px 70px rgba(22,55,48,.08);border:1px solid #dde7d8;overflow:hidden}
 .tabs{display:flex;gap:3px;padding:9px;border-bottom:1px solid #e8eee4;overflow-x:auto}
 .tab{border:0;border-radius:10px;background:transparent;padding:13px 18px;font-size:13px;font-weight:800;color:#829387;white-space:nowrap}

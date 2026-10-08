@@ -1,4 +1,4 @@
-# DeliveryOS v1 architecture
+# DeliveryOS v1/v2 architecture
 
 DeliveryOS is an agent-callable delivery lifecycle, not an AI agent or a generic
 LLM chat service. Existing buyer and provider agents (or humans) use signed
@@ -10,7 +10,7 @@ neutral acceptance decision.
 | Layer | Responsibility |
 | --- | --- |
 | HTTP/MCP adapter | Validate requests, prepare transactions, show status, notify callers; never decide the on-chain verdict. |
-| Evidence host | Serve publicly accessible, UTF-8 deliverable bytes. v1 accepts bounded HTTPS text with a declared SHA-256 and length. |
+| Evidence host | Serve publicly accessible, UTF-8 deliverable bytes. V1 accepts one bounded file; v2 accepts a canonical manifest with 1–6 bounded source files. |
 | Intelligent Contract | Freeze the brief and criteria, authorize buyer/provider actions, enforce deadlines and revision limits, retrieve pinned evidence, determine a structured verdict by validator consensus, and persist the result. |
 | GenLayer validators | Independently fetch the same bytes and compare ordered per-criterion statuses, not free-form prose. |
 
@@ -56,6 +56,27 @@ finalized transaction and agent-visible result.
 - This is distinct from the existing `DigitalDeliverableVerifier` contract:
   that project is a reusable single-policy verifier. DeliveryOS adds bilateral
   agreement, delivery versioning, deadlines, revisions, and agent-facing flows.
+
+## V2 package boundary
+
+V2 is deployed as a **separate** `DeliveryOSPackages.py` contract. It retains
+the bilateral lifecycle but changes the submitted object from one document to
+a canonical manifest. The manifest is committed after its source files so it
+can refer to their full source-commit SHA without a self-referential hash.
+It lists exact URLs, hashes, lengths, media types, and zero-based criterion
+mappings. Validators fetch the manifest and every mapped file from the frozen
+repository prefix, verify all declared bytes, and compare the same structured
+status vector **plus** the content fingerprint, file count, and byte total.
+Manual buyer acceptance still requires validator-side byte verification, but
+is explicitly recorded as a `BUYER` decision rather than AI consensus.
+
+The manifest and each file are capped at 4,800 bytes; the source files total
+at most 12,000 bytes. Supported interpretation is UTF-8 text, Markdown, JSON,
+and CSV—not executable code, images, or private content. A revision must change
+the file-hash set. The package preflight API and MCP tool are conveniences;
+their result never replaces on-chain validator retrieval. Finalized successful
+execution and the resulting chain state, not a proposed transaction hash, are
+the evidence of a completed decision.
 
 ## Required evidence for a production claim
 

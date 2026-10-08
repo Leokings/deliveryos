@@ -143,7 +143,7 @@ class DeliveryOSClient:
             raise ValueError("Evidence URL must name a file")
 
     @classmethod
-    def pin_public_evidence(cls, url: str) -> dict:
+    def fetch_public_evidence_bytes(cls, url: str) -> bytes:
         cls._validate_evidence_url(url)
 
         class NoRedirect(request.HTTPRedirectHandler):
@@ -161,6 +161,11 @@ class DeliveryOSClient:
             raise ValueError(f"Evidence fetch failed with HTTP {exc.code}") from exc
         if not 1 <= len(body) <= MAX_EVIDENCE_BYTES:
             raise ValueError("Evidence must be 1-4800 bytes")
+        return body
+
+    @classmethod
+    def pin_public_evidence(cls, url: str) -> dict:
+        body = cls.fetch_public_evidence_bytes(url)
         try:
             if not body.decode("utf-8").strip():
                 raise ValueError("Evidence must contain nonempty UTF-8 text")
@@ -175,7 +180,18 @@ class DeliveryOSClient:
             raise ValueError("Job is not awaiting a delivery")
         if not evidence_url.startswith(job["evidence_prefix"]):
             raise ValueError("Evidence URL is outside the agreed source prefix")
-        evidence = self.pin_public_evidence(evidence_url)
+        if job.get("protocol") == "DELIVERYOS_PACKAGES_V2":
+            from .packages import verify_public_package
+            previous_fingerprint = None
+            if job["status"] == "REVISION":
+                previous = self.get_submission(job_id, int(job["current_version"]))
+                previous_fingerprint = previous.get("content_fingerprint")
+            evidence = verify_public_package(
+                evidence_url, job["evidence_prefix"], len(job["criteria"]),
+                previous_fingerprint=previous_fingerprint,
+            )
+        else:
+            evidence = self.pin_public_evidence(evidence_url)
         result = self._write("submit_delivery", [job_id, evidence_url,
                              evidence["sha256"], evidence["size_bytes"]])
         return {**result, "evidence": evidence}

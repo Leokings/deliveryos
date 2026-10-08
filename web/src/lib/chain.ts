@@ -5,27 +5,27 @@ import { CONTRACT_ADDRESS, type Job, type Submission } from "./protocol";
 
 const client = createClient({ chain: studionet });
 
-export async function readJob(jobId: string): Promise<Job> {
+export async function readJob(jobId: string, address: `0x${string}` = CONTRACT_ADDRESS): Promise<Job> {
   return await client.readContract({
-    address: CONTRACT_ADDRESS,
+    address,
     functionName: "get_job",
     args: [jobId],
     transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
   }) as Job;
 }
 
-export async function readSubmission(jobId: string, version: number): Promise<Submission> {
+export async function readSubmission(jobId: string, version: number, address: `0x${string}` = CONTRACT_ADDRESS): Promise<Submission> {
   return await client.readContract({
-    address: CONTRACT_ADDRESS,
+    address,
     functionName: "get_submission",
     args: [jobId, version],
     transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
   }) as Submission;
 }
 
-export async function readJobCount(): Promise<number> {
+export async function readJobCount(address: `0x${string}` = CONTRACT_ADDRESS): Promise<number> {
   const value = await client.readContract({
-    address: CONTRACT_ADDRESS,
+    address,
     functionName: "get_job_count",
     args: [],
     transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
@@ -33,9 +33,9 @@ export async function readJobCount(): Promise<number> {
   return Number(value);
 }
 
-export async function readJobId(index: number): Promise<string> {
+export async function readJobId(index: number, address: `0x${string}` = CONTRACT_ADDRESS): Promise<string> {
   return await client.readContract({
-    address: CONTRACT_ADDRESS,
+    address,
     functionName: "get_job_id",
     args: [index],
     transactionHashVariant: TransactionHashVariant.LATEST_FINAL,

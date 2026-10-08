@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/validation.test.ts",
+    "test": "node --experimental-strip-types --test tests/validation.test.ts tests/package.test.ts",
     "test:e2e": "node tests/browser.mjs",
     "test:e2e:live": "node tests/browser-write.mjs"
   },

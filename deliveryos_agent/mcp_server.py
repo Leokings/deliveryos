@@ -1,12 +1,16 @@
 """DeliveryOS MCP tools for existing buyer/provider agents.
 
 Run with: mcp run deliveryos_agent/mcp_server.py
-Set DELIVERYOS_CONTRACT_ADDRESS and, for writes, DELIVERYOS_PRIVATE_KEY.
+Set DELIVERYOS_CONTRACT_ADDRESS to the v1 or v2 deployment and, for writes,
+DELIVERYOS_PRIVATE_KEY. V2 jobs use public package manifests.
 """
+
+import hashlib
 
 from mcp.server import MCPServer
 
 from deliveryos_agent.client import DeliveryOSClient
+from deliveryos_agent.packages import build_manifest, verify_public_package
 
 
 mcp = MCPServer("DeliveryOS")
@@ -84,8 +88,37 @@ def deliveryos_cancel_proposal(job_id: str) -> dict:
 
 @mcp.tool()
 def deliveryos_submit_delivery(job_id: str, evidence_url: str) -> dict:
-    """Provider: fetch and hash a public commit-pinned UTF-8 file, then submit it."""
+    """Provider: preflight and submit one v1 file or a v2 package manifest."""
     return _service().submit_delivery(job_id, evidence_url)
+
+
+@mcp.tool()
+def deliveryos_build_package_manifest(evidence_prefix: str, source_commit: str,
+                                      files: list[dict], criterion_count: int) -> dict:
+    """Prepare exact v2 manifest bytes after committing 1-6 public source files.
+
+    Each file requires path, UTF-8 content, media_type, and zero-based criteria.
+    Save manifest_text exactly (with its final newline), commit it separately,
+    and submit its commit-pinned raw GitHub URL. This does not publish files.
+    """
+    specs = []
+    for item in files:
+        if not isinstance(item, dict) or set(item) != {"path", "content", "media_type", "criteria"}:
+            raise ValueError("Each file needs path, content, media_type, and criteria")
+        specs.append({"path": item["path"], "body": item["content"],
+                      "media_type": item["media_type"], "criteria": item["criteria"]})
+    manifest = build_manifest(evidence_prefix, source_commit, specs, criterion_count)
+    return {"manifest_text": manifest.decode("utf-8"),
+            "sha256": hashlib.sha256(manifest).hexdigest(),
+            "size_bytes": len(manifest),
+            "next_step": "Save the exact manifest text, commit it, then submit that commit-pinned raw URL."}
+
+
+@mcp.tool()
+def deliveryos_verify_package(manifest_url: str, evidence_prefix: str,
+                              criterion_count: int) -> dict:
+    """Preflight a public v2 manifest and every referenced file, without signing."""
+    return verify_public_package(manifest_url, evidence_prefix, criterion_count)
 
 
 @mcp.tool()

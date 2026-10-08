@@ -1,5 +1,5 @@
 import { readJob, readJobCount, readJobId } from "@/lib/chain";
-import { badRequest, publicJson, publicOptions, upstreamError } from "@/lib/http";
+import { badRequest, publicOptions, publicRecentJobs, upstreamError } from "@/lib/http";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
       const id = await readJobId(index);
       jobs.push(await readJob(id));
     }
-    return publicJson({ total, jobs });
+    return publicRecentJobs({ total, jobs });
   } catch (error) {
     return upstreamError("jobs", error);
   }

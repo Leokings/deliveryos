@@ -1,0 +1,40 @@
+{
+  "network": "studionet",
+  "chain_id": 61999,
+  "contract_address": "0x6AdA7535b224343D48175930bd4874201B3f8860",
+  "source_sha256_lf": "c87956dd9e3e88ba22b171d3adda3f3db22dbce46adf8bde1d3ccd16aa7d2bea",
+  "manifest_url": "https://raw.githubusercontent.com/Leokings/deliveryos/d8a674033c477f0d2bcae59ab8049cb2bdd86e37/examples/package_v2/package.json",
+  "manifest_sha256": "4b33e4b5f89d0c3772298c50431fed8f1bc78e641125f4eafec518c44192c083",
+  "content_fingerprint": "d5f1feb0b21032dc1ac85985cddfad7ace6a3c178b29840f1993e3c1292f0059",
+  "consensus_review": {
+    "job_id": "package_f2131d0cd28244b2",
+    "expected_status": "ACCEPTED",
+    "expected_decision_source": "CONSENSUS",
+    "expected_criterion_statuses": ["MET", "MET"],
+    "transactions": {
+      "deploy": "0x809b1fbd9f271d76c49db42955d7acbd8cb7b5f8f474f5dbcbdf6ed6dff9e955",
+      "propose": "0x976f4d3ec3ff09e90f239eef17ad22ee98401b8886a202a925ead11ba353fb29",
+      "accept_job": "0xc41df3498411c971d6da420c5257dd5350e3337084c0d97a08733d789614d281",
+      "submit": "0xa6ba3245bd2dc98b0d0d5f0a6690de56691a2d4202ef5a18097c16e85d2cbd34",
+      "review": "0x650a6bd7014401f7ac35dfadfa55a8eb1856c327bced72b792a98ab954bc6ab7"
+    }
+  },
+  "buyer_acceptance": {
+    "job_id": "package_7b5b7ad4776f41fd",
+    "expected_status": "ACCEPTED",
+    "expected_decision_source": "BUYER",
+    "transactions": {
+      "propose": "0xbe070d9fc3df40e64594b0f8793a9ef94972a1b6b483c540792d03f9a56f7a96",
+      "accept_job": "0x639a7c18563dbcf34c1c45917bfd82c0d917b45a5dd59f40fc699022126cf1ea",
+      "submit": "0x643d4e3ceaf2ec56d276ad4073b0cbb784bfe9f23f96dabac60923bd7572869f",
+      "accept_delivery": "0x5a26412b16db78148e031da2a0411107c44e0d03bc17ab853430c3c6a252a7b7"
+    }
+  },
+  "browser_write_local": {
+    "job_id": "v2_browser_44907d02d71e45d5",
+    "expected_status": "PROPOSED",
+    "buyer": "0xf664f859069a17F8dE82f9219342a85eAA998cb0",
+    "transaction": "0x9abcd2e9a4451310df3b043978cb9c2cac034f0fce63f4dc73482691f8793c41",
+    "note": "Ephemeral test wallet signed through the local production-style browser UI; receipt finalized successfully and v2 job read matched. No test key was stored."
+  }
+}

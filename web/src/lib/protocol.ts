@@ -1,6 +1,11 @@
 export const CHAIN_ID = 61999;
 export const NETWORK = "studionet";
 export const CONTRACT_ADDRESS = "0xef13Bfe9A9B0b4cE7EB4AfC2d8EDd8A6c6D43e40" as const;
+export const PACKAGES_CONTRACT_ADDRESS = "0x6AdA7535b224343D48175930bd4874201B3f8860" as const;
+export type ContractVersion = "v1" | "v2";
+export function contractFor(version: ContractVersion) {
+  return version === "v2" ? PACKAGES_CONTRACT_ADDRESS : CONTRACT_ADDRESS;
+}
 export const EXPLORER = "https://explorer-studio.genlayer.com";
 export const JOB_ID_PATTERN = /^[A-Za-z0-9_-]{8,64}$/;
 export const TX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
@@ -8,6 +13,7 @@ export const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 export const MAX_EVIDENCE_BYTES = 4800;
 
 export type Job = {
+  protocol: string;
   job_id: string;
   buyer: string;
   provider: string;
@@ -37,6 +43,10 @@ export type Submission = {
   submitted_epoch: number;
   statuses: string[];
   verdict: string;
+  evidence_type?: string;
+  content_fingerprint?: string;
+  file_count?: number;
+  total_bytes?: number;
 };
 
 export function validateEvidenceUrl(value: string, prefix = false): URL {
