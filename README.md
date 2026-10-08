@@ -7,6 +7,9 @@ system, or escrow. Version 1 makes decisions first; funds are out of scope.
 The contract is live on Studionet. A browser workspace and read-only public API
 live in [`web/`](web/). This is a public Studionet pilot, not a payments product.
 
+Live site: [deliveryos-leokings588-5902s-projects.vercel.app](https://deliveryos-leokings588-5902s-projects.vercel.app/).
+Public source: [github.com/Leokings/deliveryos](https://github.com/Leokings/deliveryos).
+
 ## First-time flow
 
 On the website, choose **Start a job** and connect the buyer wallet. Set a
@@ -122,6 +125,12 @@ sends transactions, so it is opt-in. `web/tests/browser-write.mjs` uses an
 ephemeral generated test wallet to create a real on-chain job through the site;
 run it explicitly with `npm run test:e2e:live`. Browser tests generate local
 screenshots under ignored `web/artifacts/`.
+
+For deployed-site verification, set `BASE_URL` to the live site before running
+the browser suites. The public-site run on 2026-10-08 passed desktop/mobile,
+wallet switching, public API, and an actual signed Studionet job creation
+(`browser_781f3629514c48bc`). This does not prove compatibility with every
+browser wallet or guarantee AI decisions on unseen evidence.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for protocol boundaries and explicit
 limitations. In particular, SHA-256 proves the bytes examined, not that a
