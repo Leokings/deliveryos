@@ -8,8 +8,9 @@ import { chromium } from "playwright";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 const base = process.env.BASE_URL ?? "http://localhost:3001";
-const version = process.env.DELIVERYOS_TEST_VERSION === "v2" ? "v2" : "v1";
-const apiBase = version === "v2" ? "/api/v2" : "/api";
+const version = ["v1", "v2", "v3"].includes(process.env.DELIVERYOS_TEST_VERSION)
+  ? process.env.DELIVERYOS_TEST_VERSION : "v3";
+const apiBase = version === "v1" ? "/api" : `/api/${version}`;
 const rpcUrl = "https://studio.genlayer.com/api";
 const account = privateKeyToAccount(generatePrivateKey());
 const jobId = `${version}_browser_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`;
@@ -58,7 +59,7 @@ try {
     };
   }, account.address);
   await page.goto(`${base}/?version=${version}`, { waitUntil: "networkidle" });
-  if (version === "v2") await page.locator(".format-details").getByText(/up to 6 public files/i).waitFor();
+  if (version !== "v1") await page.locator(".format-details").getByText(/up to 6 public files/i).waitFor();
   await page.getByRole("button", { name: "Connect wallet" }).click();
   await page.getByRole("button", { name: /Browser wallet ·/ }).waitFor();
   await page.getByRole("tab", { name: "Create request" }).click();
@@ -82,7 +83,8 @@ try {
   await page.getByRole("heading", { name: jobId }).waitFor({ timeout: 30000 });
   const job = await (await page.request.get(`${base}${apiBase}/jobs/${jobId}`)).json();
   assert.equal(job.status, "PROPOSED");
-  assert.equal(job.protocol, version === "v2" ? "DELIVERYOS_PACKAGES_V2" : "DELIVERYOS_V1");
+  assert.equal(job.protocol, version === "v3" ? "DELIVERYOS_PACKAGES_V3"
+    : version === "v2" ? "DELIVERYOS_PACKAGES_V2" : "DELIVERYOS_V1");
   assert.equal(job.buyer.toLowerCase(), account.address.toLowerCase());
   assert.equal(job.evidence_prefix, "https://raw.githubusercontent.com/Leokings/digital-deliverable-verifier/");
   await page.getByRole("button", { name: /Copy job link/ }).waitFor();

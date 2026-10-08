@@ -96,3 +96,34 @@ def test_package_client_preflights_before_signed_write(monkeypatch):
     assert result["evidence"]["file_count"] == 2
     assert sdk.writes == [("submit_delivery", ["package_example_01", MANIFEST_URL,
                                               hashlib.sha256(manifest).hexdigest(), len(manifest)])]
+
+
+def test_v3_client_can_correct_pending_package_without_bypassing_preflight(monkeypatch):
+    manifest = build_manifest(PREFIX, SOURCE_COMMIT, files(), 2)
+    install_fetch(monkeypatch, manifest)
+
+    class FakeSDK:
+        def __init__(self):
+            self.writes = []
+
+        def read_contract(self, address, name, args, transaction_hash_variant):
+            if name == "get_job":
+                return {"status": "SUBMITTED", "protocol": "DELIVERYOS_PACKAGES_V3",
+                        "evidence_prefix": PREFIX, "criteria": ["one", "two"],
+                        "review_deadline_epoch": 9999999999, "current_version": 1,
+                        "last_reviewed_fingerprint": ""}
+            if name == "get_submission":
+                return {"sha256": "0" * 64}
+            raise AssertionError(name)
+
+        def write_contract(self, address, name, account, args):
+            self.writes.append((name, args))
+            return "0x" + "c" * 64
+
+    sdk = FakeSDK()
+    client = DeliveryOSClient("0x" + "d" * 40, client=sdk)
+    client.account = SimpleNamespace(address="0x" + "e" * 40)
+    result = client.submit_delivery("package_example_03", MANIFEST_URL)
+    assert result["evidence"]["sha256"] == hashlib.sha256(manifest).hexdigest()
+    assert sdk.writes == [("submit_delivery", ["package_example_03", MANIFEST_URL,
+                                              hashlib.sha256(manifest).hexdigest(), len(manifest)])]

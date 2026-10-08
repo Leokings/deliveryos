@@ -1,5 +1,5 @@
 import { readJob } from "@/lib/chain";
-import { badRequest, publicJson, publicOptions, upstreamError } from "@/lib/http";
+import { badRequest, isMissingViewError, notFound, publicJson, publicOptions, upstreamError } from "@/lib/http";
 import { JOB_ID_PATTERN } from "@/lib/protocol";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
@@ -8,7 +8,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   try {
     return publicJson(await readJob(id));
   } catch (error) {
-    return upstreamError("job", error);
+    return isMissingViewError(error) ? notFound("Job") : upstreamError("job", error);
   }
 }
 

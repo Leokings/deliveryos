@@ -1,4 +1,4 @@
-# DeliveryOS v1/v2 architecture
+# DeliveryOS v1/v2/v3 architecture
 
 DeliveryOS is an agent-callable delivery lifecycle, not an AI agent or a generic
 LLM chat service. Existing buyer and provider agents (or humans) use signed
@@ -10,7 +10,7 @@ neutral acceptance decision.
 | Layer | Responsibility |
 | --- | --- |
 | HTTP/MCP adapter | Validate requests, prepare transactions, show status, notify callers; never decide the on-chain verdict. |
-| Evidence host | Serve publicly accessible, UTF-8 deliverable bytes. V1 accepts one bounded file; v2 accepts a canonical manifest with 1–6 bounded source files. |
+| Evidence host | Serve publicly accessible, UTF-8 deliverable bytes. V1 accepts one bounded file; v2/v3 accept a canonical manifest with 1–6 bounded source files. |
 | Intelligent Contract | Freeze the brief and criteria, authorize buyer/provider actions, enforce deadlines and revision limits, retrieve pinned evidence, determine a structured verdict by validator consensus, and persist the result. |
 | GenLayer validators | Independently fetch the same bytes and compare ordered per-criterion statuses, not free-form prose. |
 
@@ -77,6 +77,20 @@ the file-hash set. The package preflight API and MCP tool are conveniences;
 their result never replaces on-chain validator retrieval. Finalized successful
 execution and the resulting chain state, not a proposed transaction hash, are
 the evidence of a completed decision.
+
+## V3 pending-evidence recovery
+
+V3 is a separate contract that retains the v2 package format. A provider may
+submit a different manifest while a version is `SUBMITTED`; the old record is
+marked `SUPERSEDED` but keeps its URL and hash. The correction does not use a
+revision allowance. The first submission in each review cycle freezes
+`review_deadline_epoch`, so repeated corrections cannot indefinitely delay
+`close_unreviewed`. Once the deadline passes, unresolved work closes
+`INCONCLUSIVE`, never accepted. `last_reviewed_fingerprint` tracks the last
+assessed file set, so a requested revision cannot be disguised by a sequence
+of metadata-only corrections. Both `accept_delivery` and `evaluate_delivery`
+require an expected version: if a correction finalized before the decision,
+the stale transaction fails instead of acting on unseen evidence.
 
 ## Required evidence for a production claim
 

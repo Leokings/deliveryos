@@ -7,6 +7,7 @@ import json
 import os
 import re
 import threading
+import time
 from urllib import error, request
 from urllib.parse import urlsplit
 
@@ -96,7 +97,11 @@ class DeliveryOSClient:
                 actions = ["deliveryos_accept_delivery", "deliveryos_evaluate_delivery"]
             elif role == "provider":
                 actions = ["deliveryos_evaluate_delivery"]
-        protocol = "v2" if job.get("protocol") == "DELIVERYOS_PACKAGES_V2" else "v1"
+                if (job.get("protocol") == "DELIVERYOS_PACKAGES_V3" and
+                        time.time() <= int(job.get("review_deadline_epoch", 0))):
+                    actions.insert(0, "deliveryos_submit_delivery")
+        protocol = ("v3" if job.get("protocol") == "DELIVERYOS_PACKAGES_V3" else
+                    "v2" if job.get("protocol") == "DELIVERYOS_PACKAGES_V2" else "v1")
         return {
             "job_id": job_id,
             "status": status,
@@ -104,7 +109,11 @@ class DeliveryOSClient:
             "wallet_address": self.wallet_address,
             "possible_tools": actions,
             "job_url_path": f"/?version={protocol}&job={job_id}",
-            "next_step": ("Choose a possible tool, then check its transaction hash until "
+            "next_step": ("Choose a possible tool. For v3 acceptance/review, pass the inspected "
+                          "current_version as expected_version. Then check the transaction hash "
+                          "until finalized_success is true and read the job again."
+                          if protocol == "v3" and actions else
+                          "Choose a possible tool, then check its transaction hash until "
                           "finalized_success is true and read the job again."
                           if actions else "No role-specific write is currently suggested. "
                           "Check the assigned wallet and job state."),
@@ -218,31 +227,50 @@ class DeliveryOSClient:
 
     def submit_delivery(self, job_id: str, evidence_url: str) -> dict:
         job = self.get_job(job_id)
-        if job["status"] not in ("ACTIVE", "REVISION"):
+        is_v3 = job.get("protocol") == "DELIVERYOS_PACKAGES_V3"
+        if job["status"] not in (("ACTIVE", "REVISION", "SUBMITTED") if is_v3 else ("ACTIVE", "REVISION")):
             raise ValueError("Job is not awaiting a delivery")
+        if is_v3 and job["status"] == "SUBMITTED" and time.time() > int(job.get("review_deadline_epoch", 0)):
+            raise ValueError("Correction window passed")
         if not evidence_url.startswith(job["evidence_prefix"]):
             raise ValueError("Evidence URL is outside the agreed source prefix")
-        if job.get("protocol") == "DELIVERYOS_PACKAGES_V2":
+        if job.get("protocol") in ("DELIVERYOS_PACKAGES_V2", "DELIVERYOS_PACKAGES_V3"):
             from .packages import verify_public_package
-            previous_fingerprint = None
-            if job["status"] == "REVISION":
+            previous_fingerprint = job.get("last_reviewed_fingerprint") if is_v3 else None
+            if not is_v3 and job["status"] == "REVISION":
                 previous = self.get_submission(job_id, int(job["current_version"]))
                 previous_fingerprint = previous.get("content_fingerprint")
             evidence = verify_public_package(
                 evidence_url, job["evidence_prefix"], len(job["criteria"]),
                 previous_fingerprint=previous_fingerprint,
             )
+            if is_v3 and job["status"] == "SUBMITTED":
+                previous = self.get_submission(job_id, int(job["current_version"]))
+                if evidence["sha256"] == previous["sha256"]:
+                    raise ValueError("A correction must change the manifest bytes")
         else:
             evidence = self.pin_public_evidence(evidence_url)
         result = self._write("submit_delivery", [job_id, evidence_url,
                              evidence["sha256"], evidence["size_bytes"]])
         return {**result, "evidence": evidence}
 
-    def accept_delivery(self, job_id: str) -> dict:
-        return self._write("accept_delivery", [job_id])
+    def _decision_args(self, job_id: str, expected_version: int | None) -> list:
+        job = self.get_job(job_id)
+        if job.get("protocol") == "DELIVERYOS_PACKAGES_V3":
+            if type(expected_version) is not int or expected_version < 1:
+                raise ValueError("V3 decisions require the inspected expected_version")
+            if expected_version != int(job["current_version"]):
+                raise ValueError("Pending version changed; inspect the latest evidence")
+            return [job_id, expected_version]
+        if expected_version is not None:
+            raise ValueError("Expected version is supported only by the v3 contract")
+        return [job_id]
 
-    def evaluate_delivery(self, job_id: str) -> dict:
-        return self._write("evaluate_delivery", [job_id])
+    def accept_delivery(self, job_id: str, expected_version: int | None = None) -> dict:
+        return self._write("accept_delivery", self._decision_args(job_id, expected_version))
+
+    def evaluate_delivery(self, job_id: str, expected_version: int | None = None) -> dict:
+        return self._write("evaluate_delivery", self._decision_args(job_id, expected_version))
 
     def expire_undelivered(self, job_id: str) -> dict:
         return self._write("expire_undelivered", [job_id])

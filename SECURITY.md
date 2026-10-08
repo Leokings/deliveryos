@@ -1,4 +1,4 @@
-# DeliveryOS v1/v2 security boundary
+# DeliveryOS v1/v2/v3 security boundary
 
 This is a non-custodial, decision-only Studionet release. Do not connect
 payments to its status field without a separate escrow design and review.
@@ -41,6 +41,12 @@ payments to its status field without a separate escrow design and review.
   before recording the buyer's decision. This confirms byte identity, **not**
   the buyer's factual claims or a neutral AI verdict. Consumers must inspect
   `decision_source` and should not treat buyer acceptance as consensus.
+- V3 allows the provider to supersede a still-pending package before a fixed
+  review deadline; this cannot extend that deadline or spend a requested
+  revision. Old version URLs and hashes remain readable. A buyer's acceptance
+  and either party's validator-review call include an expected version. If a
+  correction finalizes first, the stale decision reverts instead of examining
+  or accepting a different version.
 - Only `raw.githubusercontent.com` and full commit-SHA evidence URLs are
   accepted. The buyer approves the repository prefix. The agent connector
   refuses redirects; GenLayer validators check the final fetched byte hash.
@@ -48,7 +54,7 @@ payments to its status field without a separate escrow design and review.
 Known limits: there is no escrow, automated evidence authenticity check,
 private evidence, image/video interpretation, app-level appeal flow, audited
 wallet custody, or security guarantee against all adversarial deliverables.
-V2 package checks do not prove authorship or external completion. Browser and
+V2/v3 package checks do not prove authorship or external completion. Browser and
 agent preflight may reject some unusual CSV accepted by Python's parser; use
 plain, conventional CSV or text/JSON. A controlled adversarial multi-validator
 disagreement run remains unverified; the available test evidence must not be

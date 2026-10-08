@@ -1,0 +1,30 @@
+{
+  "network": "studionet",
+  "chain_id": 61999,
+  "contract_address": "0x89fFB4Ced8C0befa594B470629b3b15827749DbF",
+  "source_sha256_lf": "f8b1ab9466f294be8f710558cd42e9ae582964882edf5703e8cca44efa03e667",
+  "manifest_url": "https://raw.githubusercontent.com/Leokings/deliveryos/d8a674033c477f0d2bcae59ab8049cb2bdd86e37/examples/package_v2/package.json",
+  "manifest_sha256": "4b33e4b5f89d0c3772298c50431fed8f1bc78e641125f4eafec518c44192c083",
+  "content_fingerprint": "d5f1feb0b21032dc1ac85985cddfad7ace6a3c178b29840f1993e3c1292f0059",
+  "correction_review": {
+    "job_id": "package_v3_b3a8798ee6a74d11",
+    "expected_status": "ACCEPTED",
+    "expected_decision_source": "CONSENSUS",
+    "expected_criterion_statuses": ["MET", "MET"],
+    "first_version_manifest_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "first_version_verdict": "SUPERSEDED",
+    "corrected_version": 2,
+    "review_deadline_epoch": 1792340481,
+    "correction_spent_revision": false,
+    "correction_extended_review_window": false,
+    "transactions": {
+      "deploy": "0x91ca4576ccbb1c769c1a5256cef36c6fcead3da368e0da50448fefb32411eef2",
+      "propose": "0x179672a1ad842ccdea5cfce4360121d335c1ef5d2d74bc95decce400b923a0e3",
+      "accept_job": "0x5ad5b644918de8c85ac8c1266a53b7737fac855b91cc27504dc8a764a16e9dad",
+      "bad_submit": "0xc735dbf083374aaf8a03ab43e91d9a8cd478db8c596f88a510f2928f7e0feb22",
+      "correction": "0xcca48416db7e034358dc5eb777354fda4f90729b451a3c6a2473819792c63364",
+      "review": "0xd99c11024f0a7036763e713bf6b602788e5c97f8dfe831a4b757d8ad93e75e55"
+    }
+  },
+  "notes": "The full-consensus test asserted finalized successful execution at each write, inspected the corrected job and both version records, and confirmed the deployed code hash. A deliberately wrong first SHA was stored but never accepted; version 2 corrected it before review. Version-bound stale decision rejection and fixed deadline behavior also passed direct tests. Studionet's hourly RPC quota interrupted an earlier test attempt and is not removed by this contract."
+}

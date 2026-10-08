@@ -3,8 +3,9 @@
 DeliveryOS is a tool that a buyer agent and a provider agent can call to agree
 on a digital deliverable, submit a version, and get a GenLayer-backed
 acceptance or revision decision. It is **not** an agent, marketplace, payment
-system, or escrow. Both decision-only contracts are live on Studionet: v1
-assesses one text file; v2 assesses a package of 1–6 text files. A browser
+system, or escrow. The decision-only contracts are live on Studionet: v1
+assesses one text file; v2 and v3 assess a package of 1–6 text files. V3 adds
+a bounded correction path for pending evidence and version-bound decisions. A browser
 workspace and read-only public API live in [`web/`](web/). This is a public
 Studionet pilot, not a payments product.
 
@@ -23,20 +24,21 @@ the resulting job link to the invitee, who opens it, reads the terms, and
 accepts using the named wallet. This is a direct invitation, not a job board.
 
 The invitee publishes the finished files and submits their pinned evidence
-URL. V2 supports a package of 1–6 files and is the default; the older
-single-file format is under **Change format**. See the package instructions
-below before preparing v2 evidence. The buyer can approve a submission, or
+URL. V3 supports a package of 1–6 files and is the default; the older
+versions are under **Change format**. See the package instructions
+below before preparing package evidence. The buyer can approve a submission, or
 either party can ask GenLayer validators to review it. Wait for
 **finalized + successful execution**, then refresh the job. No API key is
-needed for public reads; no funds move in either version.
+needed for public reads; no funds move in any version.
 
-## Evidence packages (v2)
+## Evidence packages (v3 current, v2 legacy)
 
-V2 is a separate contract at
-`0x6AdA7535b224343D48175930bd4874201B3f8860` on Studionet chain 61999.
-It does not alter existing v1 jobs. A first-time provider should:
+V3 is a separate contract at
+`0x89fFB4Ced8C0befa594B470629b3b15827749DbF` on Studionet chain 61999. It does not alter existing
+v1 or v2 jobs. V2 remains readable at
+`0x6AdA7535b224343D48175930bd4874201B3f8860`. A first-time provider should:
 
-1. Agree to a v2 job with 1–4 objective criteria and a public GitHub repository
+1. Agree to a v3 job with 1–4 objective criteria and a public GitHub repository
    prefix approved by the buyer. Do not publish private client material.
 2. Create 1–6 UTF-8 text, Markdown, JSON, or CSV files, each at most 4,800 bytes
    and at most 12,000 bytes together. Commit these files and copy the full
@@ -50,20 +52,29 @@ It does not alter existing v1 jobs. A first-time provider should:
 4. Submit the raw GitHub URL of that second commit's manifest. The website or
    `deliveryos_verify_package` fetches every pinned source file, checks URL,
    length, UTF-8, SHA-256, format, and mapping, then submits the manifest hash.
-5. The buyer may accept manually after GenLayer validators independently
+5. If a pending v3 manifest was wrong or became unavailable, submit a different
+   manifest before the fixed review deadline. The earlier version remains
+   visible as `SUPERSEDED`, and correcting it does not spend a requested
+   revision or restart the review clock. The browser and MCP connector preflight
+   the new public bytes; the contract re-verifies them at decision time.
+6. The buyer may accept manually after GenLayer validators independently
    verify the package bytes, or either party can request validator assessment
    of the frozen criteria. The `decision_source` shows `BUYER` versus
-   `CONSENSUS`. A revision must change at least one source file, not merely
-   edit the manifest metadata.
+   `CONSENSUS`. V3 acceptance and review include the inspected version number;
+   a later correction causes a stale signed decision to fail. A revision must
+   change at least one source file, not merely edit the manifest metadata.
 
 A [real two-file package](examples/package_v2/package.json) and its
 [source files](examples/package_v2/source/) show the exact format. Its live
 [consensus-reviewed job](https://deliveryos-tau-wheat.vercel.app/?version=v2&job=package_f2131d0cd28244b2)
 and receipts are in [deployments/studionet_packages.json](deployments/studionet_packages.json).
+The v3 [corrected and consensus-reviewed job](https://deliveryos-tau-wheat.vercel.app/?version=v3&job=package_v3_b3a8798ee6a74d11)
+and its deploy, correction and review transactions are recorded in
+[deployments/studionet_packages_v3.json](deployments/studionet_packages_v3.json).
 The content hash proves which bytes were assessed, not that their factual
 claims are true or that external work happened.
 
-The v1 lifecycle is available to agents through MCP; v2 uses the same signed
+The v1 lifecycle is available to agents through MCP; v2/v3 use the same signed
 methods plus the package tools described above:
 
 1. The buyer and provider each use their own GenLayer wallet. The buyer writes
@@ -88,8 +99,8 @@ methods plus the package tools described above:
    not proof the contract executed.
 
 If no deliverable arrives by the due date, anyone can call
-`expire_undelivered`. If a submitted version remains unresolved seven days
-past its due date, anyone can call `close_unreviewed`; this ends
+`expire_undelivered`. If a submitted version remains unresolved past its
+review window, anyone can call `close_unreviewed`; this ends
 `INCONCLUSIVE`, never as a silent acceptance.
 
 ## Let an AI agent use it
@@ -100,18 +111,19 @@ The hosted v1 API exposes finalized reads at `/api/health`, `/api/jobs`,
 `/api/v2/jobs`, `/api/v2/jobs/{id}`,
 `/api/v2/jobs/{id}/submissions/{version}`,
 `/api/v2/packages/preflight`, and `/api/v2/openapi`; transaction status is
-shared. These endpoints are public and
+shared. V3 uses matching `/api/v3/` endpoints and is the default at
+`/openapi.json`. These endpoints are public and
 read-only. A write still needs the buyer or provider's own wallet. There is no
-hosted custodial signer or API-key-only write pathway in either version.
+hosted custodial signer or API-key-only write pathway in any version.
 
 The bundled [MCP server](deliveryos_agent/mcp_server.py) exposes the lifecycle
 as tools to existing agents. It uses the agent owner's wallet **locally** for
 signed writes. There is no hosted API key that can magically sign for every
 user. An API key could authorize a hosted service, but a write still needs
 some wallet to sign it, and a hosted custodial signer would add security and
-operating costs that both versions intentionally avoid.
+operating costs that these versions intentionally avoid.
 
-The website now opens on the v2 workflow. A buyer (human or agent) proposes a
+The website now opens on the v3 workflow. A buyer (human or agent) proposes a
 job addressed to **one specific provider wallet**. The buyer shares the
 version-specific job URL; the provider (human or agent) connects that wallet
 and accepts or declines. This is a direct invitation, not a marketplace of
@@ -126,8 +138,9 @@ From this directory:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e .
-$env:DELIVERYOS_CONTRACT_ADDRESS = "0xef13Bfe9A9B0b4cE7EB4AfC2d8EDd8A6c6D43e40"
-# For v2 packages instead, use 0x6AdA7535b224343D48175930bd4874201B3f8860.
+$env:DELIVERYOS_CONTRACT_ADDRESS = "0x89fFB4Ced8C0befa594B470629b3b15827749DbF"
+# For legacy v2 packages, use 0x6AdA7535b224343D48175930bd4874201B3f8860.
+# For legacy v1, use 0xef13Bfe9A9B0b4cE7EB4AfC2d8EDd8A6c6D43e40.
 # For read-only tools, leave DELIVERYOS_PRIVATE_KEY unset.
 # For signed writes, set it only in a trusted local process environment.
 $env:DELIVERYOS_PRIVATE_KEY = "<your wallet's private key>"
@@ -153,6 +166,7 @@ it has not yet been installed in a third-party agent host.
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 genvm-lint check contracts/DeliveryOS.py --json
 genvm-lint check contracts/DeliveryOSPackages.py --json
+genvm-lint check contracts/DeliveryOSPackagesV3.py --json
 .\.venv\Scripts\python.exe -m pytest tests/direct tests/unit -v
 gltest tests/integration -v -s --network studionet
 .\.venv\Scripts\python.exe -m pytest tests/live/test_mcp_stdio_readonly.py tests/live/test_studionet_record.py -v
@@ -175,6 +189,9 @@ The verified v1 address and transaction IDs are in
 [deployments/studionet.json](deployments/studionet.json). V2's separate source
 hash, deployed address, validator-reviewed acceptance, and buyer acceptance
 are in [deployments/studionet_packages.json](deployments/studionet_packages.json).
+V3's separate source hash, live correction, unchanged review deadline and
+consensus-reviewed acceptance are in
+[deployments/studionet_packages_v3.json](deployments/studionet_packages_v3.json).
 A second live run is not a
 substitute for checking the receipt: a network 502 may leave submission
 ambiguous, so do not blindly repeat a write.
@@ -188,8 +205,8 @@ run it explicitly with `npm run test:e2e:live`. Browser tests generate local
 screenshots under ignored `web/artifacts/`.
 
 For deployed-site verification, set `BASE_URL` to the live site before running
-the browser suites. Set `DELIVERYOS_TEST_VERSION=v2` for the opt-in signed v2
-browser test (`test:e2e:live`); the default signed test uses v1. The public-site
+the browser suites. Set `DELIVERYOS_TEST_VERSION=v1` or `v2` for legacy signed
+browser tests (`test:e2e:live`); the default signed test uses v3. The public-site
 v2 run on 2026-10-08 passed desktop/mobile,
 wallet switching, package preflight, public API, and an actual signed
 Studionet job creation (`v2_browser_9f3efa3e8e864342`). Its finalized

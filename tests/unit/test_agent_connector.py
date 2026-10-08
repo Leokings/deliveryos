@@ -74,6 +74,40 @@ def test_readonly_agent_cannot_receive_signed_action_suggestions():
     assert result["possible_tools"] == []
 
 
+def test_v3_agent_suggests_bounded_correction():
+    service = DeliveryOSClient(ADDRESS, client=FakeSDK())
+    service.account = SimpleNamespace(address="0x" + "c" * 40)
+    service.get_job = lambda _: {
+        "status": "SUBMITTED", "buyer": "0x" + "b" * 40,
+        "provider": "0x" + "c" * 40, "protocol": "DELIVERYOS_PACKAGES_V3",
+        "review_deadline_epoch": 9999999999,
+    }
+    result = service.next_actions("job_12345")
+    assert result["possible_tools"] == ["deliveryos_submit_delivery", "deliveryos_evaluate_delivery"]
+    assert result["job_url_path"] == "/?version=v3&job=job_12345"
+    service.get_job = lambda _: {
+        "status": "SUBMITTED", "buyer": "0x" + "b" * 40,
+        "provider": "0x" + "c" * 40, "protocol": "DELIVERYOS_PACKAGES_V3",
+        "review_deadline_epoch": 1,
+    }
+    # The contract, not this advisory list, remains the final clock authority.
+    assert "deliveryos_submit_delivery" not in service.next_actions("job_12345")["possible_tools"]
+
+
+def test_v3_decision_requires_exact_inspected_version():
+    sdk = FakeSDK()
+    service = DeliveryOSClient(ADDRESS, client=sdk)
+    service.account = SimpleNamespace(address="0x" + "b" * 40)
+    service.get_job = lambda _: {"protocol": "DELIVERYOS_PACKAGES_V3", "current_version": 2}
+    with pytest.raises(ValueError, match="expected_version"):
+        service.accept_delivery("job_12345")
+    with pytest.raises(ValueError, match="Pending version changed"):
+        service.evaluate_delivery("job_12345", 1)
+    result = service.accept_delivery("job_12345", 2)
+    assert result["method"] == "accept_delivery"
+    assert sdk.writes[0][3] == ["job_12345", 2]
+
+
 def test_evidence_source_and_digest_bound_to_write(monkeypatch):
     sdk = FakeSDK()
     service = DeliveryOSClient(ADDRESS, client=sdk)

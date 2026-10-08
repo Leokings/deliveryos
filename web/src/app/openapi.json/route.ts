@@ -1,2 +1,2 @@
-// A standard discovery URL for agent clients. V2 remains the default protocol.
-export { GET, OPTIONS } from "../api/v2/openapi/route";
+// A standard discovery URL for agent clients. V3 is the default protocol.
+export { GET, OPTIONS } from "../api/v3/openapi/route";

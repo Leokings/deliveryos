@@ -10,7 +10,7 @@ try {
   const errors = [];
   let recentRequests = 0;
   page.on("pageerror", (error) => errors.push(error.message));
-  page.on("request", (request) => { if (request.url().includes("/api/v2/jobs?limit=3")) recentRequests++; });
+  page.on("request", (request) => { if (request.url().includes("/api/v3/jobs?limit=3")) recentRequests++; });
   const home = await page.goto(base, { waitUntil: "networkidle" });
   assert.equal(home.status(), 200);
   await page.getByRole("heading", { name: /Work together/i }).waitFor();
@@ -20,10 +20,12 @@ try {
   assert.equal(await page.locator(".format-details").getAttribute("open"), null);
   assert.match(await page.locator('.inline-input input').inputValue(), /^job_[a-f0-9]{16}$/);
   assert.ok(await page.locator('input[type="datetime-local"]').inputValue());
+  await page.locator(".handoff-row").last().evaluate((element) => Promise.all(
+    element.getAnimations().map((animation) => animation.finished)));
   await page.screenshot({ path: "artifacts/desktop.png", fullPage: true });
 
   await page.getByRole("button", { name: /Explore a completed example/ }).click();
-  await page.getByRole("heading", { name: "package_f2131d0cd28244b2" }).waitFor();
+  await page.getByRole("heading", { name: "package_v3_b3a8798ee6a74d11" }).waitFor();
   assert.match(await page.locator(".job-detail").innerText(), /ACCEPTED/);
   assert.match(await page.locator(".job-detail").innerText(), /MET/);
   assert.match(await page.locator(".job-detail").innerText(), /2 files/);
@@ -35,13 +37,21 @@ try {
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.getByRole("button", { name: /Copy job link/ }).click();
   const sharedLink = await page.evaluate(() => navigator.clipboard.readText());
-  assert.match(sharedLink, /\?version=v2&job=package_f2131d0cd28244b2$/);
+  assert.match(sharedLink, /\?version=v3&job=package_v3_b3a8798ee6a74d11$/);
   const invited = await browser.newPage();
   await invited.goto(sharedLink, { waitUntil: "networkidle" });
-  await invited.getByRole("heading", { name: "package_f2131d0cd28244b2" }).waitFor();
+  await invited.getByRole("heading", { name: "package_v3_b3a8798ee6a74d11" }).waitFor();
   assert.equal(await invited.getByRole("tab", { name: "Open invite" }).getAttribute("aria-selected"), "true");
   assert.match(await invited.locator(".next-step-copy").innerText(), /finished/);
   await invited.close();
+
+  await page.getByRole("tab", { name: "Open invite" }).click();
+  await page.getByPlaceholder("Paste a job reference").fill("audit_unknown_2026");
+  await page.getByRole("button", { name: /Open job/ }).click();
+  await page.locator(".alert-error").getByText(/not found/i).waitFor();
+  assert.equal(await page.locator(".job-detail").count(), 0, "failed lookup must not leave the previous accepted job visible");
+  assert.equal(new URL(page.url()).searchParams.has("job"), false);
+  assert.equal((await page.request.get(`${base}/api/v3/jobs/audit_unknown_2026`)).status(), 404);
 
   await page.getByRole("tab", { name: "Create request" }).click();
   await page.locator(".panel-main").getByRole("button", { name: "Create request" }).click();
@@ -58,7 +68,7 @@ try {
   const spec = await page.request.get(`${base}/openapi.json`);
   assert.equal(spec.status(), 200);
   assert.equal((await spec.json()).openapi, "3.1.0");
-  assert.equal((await spec.json()).info.version, "2.0.0");
+  assert.equal((await spec.json()).info.version, "3.0.0");
   const llms = await page.request.get(`${base}/llms.txt`);
   assert.equal(llms.status(), 200);
   assert.match(await llms.text(), /not a public job marketplace/);
@@ -68,16 +78,23 @@ try {
   await page.getByRole("button", { name: /Explore a completed example/ }).click();
   await page.getByRole("heading", { name: "deliveryos_cb5bcede778b4248" }).waitFor();
   assert.match(await page.locator(".job-detail").innerText(), /ACCEPTED/);
-  await page.getByRole("button", { name: /Up to six files v2/i }).click();
+  await page.getByRole("button", { name: /Up to six files v2 · legacy/i }).click();
+  await page.getByRole("button", { name: /Explore a completed example/ }).click();
+  await page.getByRole("heading", { name: "package_f2131d0cd28244b2" }).waitFor();
+  assert.match(await page.locator(".job-detail").innerText(), /ACCEPTED/);
   const v2Health = await page.request.get(`${base}/api/v2/health`);
   assert.equal(v2Health.status(), 200);
   assert.equal((await v2Health.json()).protocol, "DELIVERYOS_PACKAGES_V2");
   const v2Spec = await page.request.get(`${base}/api/v2/openapi`);
   assert.equal(v2Spec.status(), 200);
   assert.equal((await v2Spec.json()).info.version, "2.0.0");
+  await page.getByRole("button", { name: /Up to six files v3 · current/i }).click();
+  const v3Health = await page.request.get(`${base}/api/v3/health`);
+  assert.equal(v3Health.status(), 200);
+  assert.equal((await v3Health.json()).protocol, "DELIVERYOS_PACKAGES_V3");
   const manifest = "https://raw.githubusercontent.com/Leokings/deliveryos/d8a674033c477f0d2bcae59ab8049cb2bdd86e37/examples/package_v2/package.json";
   const prefix = "https://raw.githubusercontent.com/Leokings/deliveryos/";
-  const preflight = await page.request.get(`${base}/api/v2/packages/preflight?url=${encodeURIComponent(manifest)}&prefix=${encodeURIComponent(prefix)}&criteria=2`);
+  const preflight = await page.request.get(`${base}/api/v3/packages/preflight?url=${encodeURIComponent(manifest)}&prefix=${encodeURIComponent(prefix)}&criteria=2`);
   assert.equal(preflight.status(), 200);
   assert.equal((await preflight.json()).file_count, 2);
   await page.screenshot({ path: "artifacts/packages-desktop.png", fullPage: true });
@@ -103,6 +120,8 @@ try {
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
   mobile.on("pageerror", (error) => errors.push(error.message));
   await mobile.goto(base, { waitUntil: "networkidle" });
+  await mobile.locator(".handoff-row").last().evaluate((element) => Promise.all(
+    element.getAnimations().map((animation) => animation.finished)));
   await mobile.screenshot({ path: "artifacts/mobile.png", fullPage: true });
   assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), true, "mobile page must not overflow horizontally");
   const reduced = await browser.newPage({ reducedMotion: "reduce" });
@@ -110,7 +129,7 @@ try {
   assert.equal(await reduced.locator(".live-pulse").first().evaluate((el) => getComputedStyle(el).animationName), "none");
   await reduced.close();
   assert.deepEqual(errors, [], `browser errors: ${errors.join(", ")}`);
-  console.log("PASS simplified v2-first UI, no initial recent-job RPC, real review proof, share/deep-link handoff, form defaults and validation, agent setup, API discovery, v1 legacy, v2 package preflight, mocked wallet network switch, mobile width, reduced motion, no page errors");
+  console.log("PASS v3-first UI, no initial recent-job RPC, real review proof, share/deep-link handoff, missing-job 404 and stale-state recovery, form defaults, agent setup, API discovery, v1/v2 legacy, v3 package preflight, mocked wallet switch, mobile width, reduced motion, no page errors");
   console.log(`Screenshots: artifacts/desktop.png and artifacts/mobile.png (${base})`);
 } finally {
   await browser.close();

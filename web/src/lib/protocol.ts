@@ -2,9 +2,11 @@ export const CHAIN_ID = 61999;
 export const NETWORK = "studionet";
 export const CONTRACT_ADDRESS = "0xef13Bfe9A9B0b4cE7EB4AfC2d8EDd8A6c6D43e40" as const;
 export const PACKAGES_CONTRACT_ADDRESS = "0x6AdA7535b224343D48175930bd4874201B3f8860" as const;
-export type ContractVersion = "v1" | "v2";
+export const PACKAGES_V3_CONTRACT_ADDRESS = "0x89fFB4Ced8C0befa594B470629b3b15827749DbF" as const;
+export type ContractVersion = "v1" | "v2" | "v3";
 export function contractFor(version: ContractVersion) {
-  return version === "v2" ? PACKAGES_CONTRACT_ADDRESS : CONTRACT_ADDRESS;
+  return version === "v3" ? PACKAGES_V3_CONTRACT_ADDRESS
+    : version === "v2" ? PACKAGES_CONTRACT_ADDRESS : CONTRACT_ADDRESS;
 }
 export const EXPLORER = "https://explorer-studio.genlayer.com";
 export const JOB_ID_PATTERN = /^[A-Za-z0-9_-]{8,64}$/;
@@ -22,8 +24,10 @@ export type Job = {
   evidence_prefix: string;
   due_epoch: number;
   submission_deadline_epoch: number;
+  review_deadline_epoch?: number;
   max_revisions: number;
   revision_count: number;
+  last_reviewed_fingerprint?: string;
   current_version: number;
   status: string;
   latest_statuses: string[];
@@ -113,11 +117,13 @@ export function repositoryPrefixFromInput(value: string): string {
   return prefix;
 }
 
-export function explainStatus(status: string): string {
+export function explainStatus(status: string, version?: ContractVersion): string {
   const messages: Record<string, string> = {
     PROPOSED: "Waiting for the provider to accept the frozen terms.",
     ACTIVE: "The provider can submit the first deliverable.",
-    SUBMITTED: "The buyer can accept, or either party can request validator review.",
+    SUBMITTED: version === "v3"
+      ? "The buyer can accept, either party can request validator review, or the provider can correct pending evidence before the fixed review deadline."
+      : "The buyer can accept, or either party can request validator review.",
     REVISION: "The provider may submit changed evidence before the revision deadline.",
     ACCEPTED: "A final acceptance decision is recorded. No payment is moved.",
     REJECTED: "The final submitted version did not meet the criteria.",
@@ -129,7 +135,7 @@ export function explainStatus(status: string): string {
   return messages[status] ?? "Read the on-chain job for its current status.";
 }
 
-export function explainNextStep(status: string, role: "buyer" | "provider" | "observer"): string {
+export function explainNextStep(status: string, role: "buyer" | "provider" | "observer", version?: ContractVersion): string {
   if (status === "PROPOSED") {
     if (role === "buyer") return "Send this job's link to the person or agent you invited.";
     if (role === "provider") return "Read the request below, then accept or decline it.";
@@ -140,7 +146,9 @@ export function explainNextStep(status: string, role: "buyer" | "provider" | "ob
   }
   if (status === "SUBMITTED") {
     if (role === "buyer") return "Read the submitted files below, then approve or request GenLayer review.";
-    if (role === "provider") return "The work is submitted. Wait for approval or request GenLayer review.";
+    if (role === "provider") return version === "v3"
+      ? "Wait for approval or request review. You can replace pending evidence before the review deadline."
+      : "The work is submitted. Wait for approval or request GenLayer review.";
   }
   if (["ACCEPTED", "REJECTED", "INCONCLUSIVE", "EXPIRED", "CANCELLED", "DECLINED"].includes(status)) {
     return "This job is finished. The decision and evidence are shown below.";

@@ -26,6 +26,11 @@ async def test_mcp_exposes_read_and_signed_write_tools(monkeypatch):
             return {"transaction_hash": "0x" + "c" * 64,
                     "status": "SUBMITTED_TO_NETWORK", "method": "evaluate_delivery"}
 
+        def accept_delivery(self, job_id, expected_version=None):
+            return {"transaction_hash": "0x" + "d" * 64,
+                    "status": "SUBMITTED_TO_NETWORK", "method": "accept_delivery",
+                    "expected_version": expected_version}
+
     monkeypatch.setattr(mcp_server.DeliveryOSClient, "from_env", lambda: FakeService())
     async with Client(mcp_server.mcp, raise_exceptions=True) as client:
         listing = await client.list_tools()
@@ -47,6 +52,12 @@ async def test_mcp_exposes_read_and_signed_write_tools(monkeypatch):
         write = await client.call_tool("deliveryos_evaluate_delivery", {"job_id": "job_12345"})
         assert write.is_error is False
         assert write.content and "SUBMITTED_TO_NETWORK" in write.content[0].text
+
+        bound = await client.call_tool("deliveryos_accept_delivery", {
+            "job_id": "job_12345", "expected_version": 2,
+        })
+        assert bound.is_error is False
+        assert '"expected_version":2' in bound.content[0].text.replace(" ", "")
 
         prepared = await client.call_tool("deliveryos_build_package_manifest", {
             "evidence_prefix": "https://raw.githubusercontent.com/Leokings/deliveryos/",
