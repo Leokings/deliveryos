@@ -58,20 +58,20 @@ try {
     };
   }, account.address);
   await page.goto(`${base}/?version=${version}`, { waitUntil: "networkidle" });
-  if (version === "v2") await page.getByRole("button", { name: /Evidence package v2/i }).waitFor();
+  if (version === "v2") await page.locator(".format-details").getByText(/up to 6 public files/i).waitFor();
   await page.getByRole("button", { name: "Connect wallet" }).click();
   await page.getByRole("button", { name: /Browser wallet ·/ }).waitFor();
-  await page.getByRole("tab", { name: "Request work" }).click();
+  await page.getByRole("tab", { name: "Create request" }).click();
   await page.locator(".inline-input input").fill(jobId);
   await page.getByPlaceholder("0x…").fill(providerAddress);
-  await page.getByPlaceholder(/Describe the result/).fill("Deliver the public Digital Deliverable Verifier installation guide with its actual install command.");
-  await page.getByPlaceholder(/Includes a concise launch summary/).fill("The guide explicitly includes the command python -m pip install -r requirements.txt.");
-  await page.getByPlaceholder("https://raw.githubusercontent.com/owner/repository/").fill("https://raw.githubusercontent.com/Leokings/digital-deliverable-verifier/");
+  await page.getByPlaceholder(/Describe the finished result/).fill("Deliver the public Digital Deliverable Verifier installation guide with its actual install command.");
+  await page.getByPlaceholder(/Includes a 200-word summary/).fill("The guide explicitly includes the command python -m pip install -r requirements.txt.");
+  await page.getByPlaceholder("https://github.com/owner/repository").fill("https://github.com/Leokings/digital-deliverable-verifier");
   const due = new Date(Date.now() + 3 * 86400_000);
   const local = new Date(due.getTime() - due.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   await page.locator('input[type="datetime-local"]').fill(local);
   console.log("DELIVERYOS_BROWSER_JOB", jobId);
-  await page.getByRole("button", { name: /Create job/ }).click();
+  await page.locator(".panel-main").getByRole("button", { name: /Create request/ }).click();
   await page.locator(".tx-line code, .alert-error").first().waitFor({ timeout: 60000 });
   const alert = page.locator(".alert-error");
   if (await alert.isVisible()) throw new Error(`UI write failed: ${await alert.innerText()}`);
@@ -84,6 +84,7 @@ try {
   assert.equal(job.status, "PROPOSED");
   assert.equal(job.protocol, version === "v2" ? "DELIVERYOS_PACKAGES_V2" : "DELIVERYOS_V1");
   assert.equal(job.buyer.toLowerCase(), account.address.toLowerCase());
+  assert.equal(job.evidence_prefix, "https://raw.githubusercontent.com/Leokings/digital-deliverable-verifier/");
   await page.getByRole("button", { name: /Copy job link/ }).waitFor();
   console.log(`PASS ${version} browser EIP-1193 wallet signed a real Studionet job; finalized execution and chain state verified`);
 } finally {

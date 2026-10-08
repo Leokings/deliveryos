@@ -282,3 +282,44 @@ button:focus-visible,a:focus-visible{outline:3px solid #df995f;outline-offset:3p
 @media(max-width:760px){.hero{padding-top:28px;padding-bottom:42px;gap:28px}.handoff-card{padding:22px}.workspace-section{padding-top:45px}.agent-primer{grid-template-columns:1fr}.share-strip{align-items:flex-start;flex-direction:column}}
 @media(max-width:460px){.hero h1{font-size:47px}.hero-copy>p{font-size:15px}.hero-actions{flex-direction:column}.hero-actions .button{width:100%}.handoff-card{padding:19px}.handoff-row strong{font-size:14px}.handoff-row small{font-size:12px}.workspace-intro h2{font-size:36px}.tab{font-size:12px}.panel-main{padding:22px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+
+/* January pilot: plain-language first, technical controls on demand. */
+.hero-copy>.hero-note{font-size:13px;line-height:1.5;color:#718578;margin:13px 0 0;max-width:470px}
+.handoff-card{background:linear-gradient(145deg,#fff 55%,#fffaf3 100%)}
+.handoff-row{gap:18px}
+.handoff-icon{font-family:Georgia,serif;font-size:22px;font-weight:800}
+.handoff-row:hover .handoff-icon{transform:translateY(-3px) rotate(-5deg)}
+.handoff-row .handoff-icon{transition:transform .25s ease}
+.format-details{margin:0 0 19px;width:fit-content;max-width:100%;color:#476354}
+.format-details>summary{list-style:none;cursor:pointer;border:1px solid #d4e1ce;background:#fff;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:800;display:flex;align-items:center;gap:16px;box-shadow:0 3px 14px rgba(22,55,48,.03)}
+.format-details>summary::-webkit-details-marker,.agent-advanced>summary::-webkit-details-marker{display:none}
+.format-details>summary:before{content:"▸";color:#7daa53;transition:transform .2s}
+.format-details[open]>summary:before{transform:rotate(90deg)}
+.format-details>summary span{font-size:11px;color:#75927a;font-weight:700}
+.format-details .protocol-picker{margin:12px 0 0;padding:13px;border:1px solid #dce8d8;border-radius:13px;background:#fff}
+.format-details .protocol-picker p{max-width:450px;margin:0 0 0 6px}
+.next-step-copy{font-size:15px;line-height:1.55;color:#355b48;background:#edf7e9;border:1px solid #d9ead2;border-radius:10px;padding:14px;margin:0 0 16px}
+.inline-connect{border:1px solid #bdd6af;background:#fff;color:#2b694b;border-radius:10px;padding:11px 14px;font-weight:800;margin:0 0 16px}
+.inline-connect:hover{background:#f2faed}
+.evidence-help{font-size:13px;color:#3c7b54;text-decoration:underline;text-underline-offset:3px;font-weight:800}
+.agent-simple-flow{display:grid;gap:10px;margin:22px 0}
+.agent-simple-flow>div{display:flex;align-items:flex-start;gap:12px;padding:13px 15px;border:1px solid #e3ebdc;background:#f9fcf5;border-radius:12px;color:#42604d;font-size:14px;line-height:1.45}
+.agent-simple-flow b{width:27px;height:27px;border-radius:9px;background:#e6f4d0;color:#4a793c;display:flex;align-items:center;justify-content:center;flex:none}
+.agent-guide{margin:0 0 14px}
+.agent-advanced{border-top:1px solid #e6ede3;padding-top:14px;margin-top:12px}
+.agent-advanced>summary{cursor:pointer;color:#517a59;font-size:13px;font-weight:800;padding:8px 0}
+.agent-advanced .api-card{margin:9px 0}
+.proof-strip{display:flex;align-items:center;gap:14px;flex-wrap:wrap;border:1px solid #cce4cb;background:#eff9ec;border-radius:15px;padding:16px 20px;margin-top:18px}
+.proof-check{width:35px;height:35px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#d5edcb;color:#3f8c5b;font-size:20px;font-weight:800;flex:none}
+.proof-strip>div{flex:1;min-width:230px}.proof-strip strong{font-size:15px}.proof-strip p{font-size:12px;color:#6e8677;margin:4px 0 0}
+.proof-strip a{font-size:12px;color:#377449;font-weight:800;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+@keyframes gentle-arrival{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes soft-breathe{50%{box-shadow:0 0 0 7px #e7f1d470}}
+.hero-copy{animation:gentle-arrival .6s ease both}
+.handoff-card{animation:gentle-arrival .7s .1s ease both}
+.handoff-row{animation:gentle-arrival .55s ease both}
+.handoff-row:nth-of-type(1){animation-delay:.2s}.handoff-row:nth-of-type(2){animation-delay:.3s}.handoff-row:nth-of-type(3){animation-delay:.4s}
+.workspace-shell .panel-grid,.job-detail,.proof-strip{animation:gentle-arrival .35s ease both}
+.live-pulse{animation:soft-breathe 3.5s ease-in-out infinite}
+@media(max-width:760px){.format-details{width:100%}.format-details>summary{justify-content:space-between}.format-details .protocol-picker{align-items:flex-start}.format-details .protocol-picker p{width:100%;margin:3px 0 0}.proof-strip{align-items:flex-start}.proof-strip>div{min-width:calc(100% - 50px)}}
+@media(prefers-reduced-motion:reduce){.hero-copy,.handoff-card,.handoff-row,.workspace-shell .panel-grid,.job-detail,.proof-strip,.live-pulse{animation:none!important}.handoff-row .handoff-icon{transition:none!important}}

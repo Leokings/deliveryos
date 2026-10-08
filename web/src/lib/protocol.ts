@@ -89,6 +89,30 @@ export function validateEvidenceUrl(value: string, prefix = false): URL {
   return url;
 }
 
+/** Accept a normal GitHub repository link in the buyer form, but keep the
+ * contract's stricter raw.githubusercontent.com repository prefix on chain. */
+export function repositoryPrefixFromInput(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("https://raw.githubusercontent.com/")) {
+    validateEvidenceUrl(trimmed, true);
+    return trimmed;
+  }
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    throw new Error("Paste a public GitHub repository link, such as https://github.com/owner/repo.");
+  }
+  const parts = /^\/([A-Za-z0-9-]+)\/([A-Za-z0-9._-]+)\/?$/.exec(url.pathname);
+  if (url.origin !== "https://github.com" || url.username || url.password || url.port
+      || url.search || url.hash || !parts || parts[2] === "." || parts[2] === "..") {
+    throw new Error("Use a public GitHub repository link without a branch, file path, or query.");
+  }
+  const prefix = `https://raw.githubusercontent.com/${parts[1]}/${parts[2]}/`;
+  validateEvidenceUrl(prefix, true);
+  return prefix;
+}
+
 export function explainStatus(status: string): string {
   const messages: Record<string, string> = {
     PROPOSED: "Waiting for the provider to accept the frozen terms.",
@@ -103,4 +127,23 @@ export function explainStatus(status: string): string {
     DECLINED: "The provider declined the proposal.",
   };
   return messages[status] ?? "Read the on-chain job for its current status.";
+}
+
+export function explainNextStep(status: string, role: "buyer" | "provider" | "observer"): string {
+  if (status === "PROPOSED") {
+    if (role === "buyer") return "Send this job's link to the person or agent you invited.";
+    if (role === "provider") return "Read the request below, then accept or decline it.";
+  }
+  if (status === "ACTIVE" || status === "REVISION") {
+    if (role === "provider") return "Publish the finished public files, then submit their pinned link.";
+    if (role === "buyer") return "The invitee is working. Come back when they submit a version.";
+  }
+  if (status === "SUBMITTED") {
+    if (role === "buyer") return "Read the submitted files below, then approve or request GenLayer review.";
+    if (role === "provider") return "The work is submitted. Wait for approval or request GenLayer review.";
+  }
+  if (["ACCEPTED", "REJECTED", "INCONCLUSIVE", "EXPIRED", "CANCELLED", "DECLINED"].includes(status)) {
+    return "This job is finished. The decision and evidence are shown below.";
+  }
+  return "Read this public job below. Connect the invited wallet to take an action.";
 }

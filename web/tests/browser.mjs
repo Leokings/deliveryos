@@ -15,13 +15,23 @@ try {
   assert.equal(home.status(), 200);
   await page.getByRole("heading", { name: /Work together/i }).waitFor();
   assert.equal(recentRequests, 0, "landing view should not spend Studionet RPC calls on recent jobs");
+  assert.match(await page.locator(".hero-copy").innerText(), /no wallet needed/i);
+  assert.match(await page.locator(".format-details").innerText(), /up to 6 public files/i);
+  assert.equal(await page.locator(".format-details").getAttribute("open"), null);
+  assert.match(await page.locator('.inline-input input').inputValue(), /^job_[a-f0-9]{16}$/);
+  assert.ok(await page.locator('input[type="datetime-local"]').inputValue());
   await page.screenshot({ path: "artifacts/desktop.png", fullPage: true });
 
-  await page.getByRole("button", { name: /See a real finalized decision/ }).click();
+  await page.getByRole("button", { name: /Explore a completed example/ }).click();
   await page.getByRole("heading", { name: "package_f2131d0cd28244b2" }).waitFor();
   assert.match(await page.locator(".job-detail").innerText(), /ACCEPTED/);
   assert.match(await page.locator(".job-detail").innerText(), /MET/);
   assert.match(await page.locator(".job-detail").innerText(), /2 files/);
+  assert.match(await page.locator(".proof-strip").innerText(), /happened on Studionet/);
+  await page.screenshot({ path: "artifacts/example-decision.png", fullPage: true });
+  const review = await page.request.get(new URL(await page.getByRole("link", { name: /Review transaction/ }).getAttribute("href"), base).toString());
+  assert.equal(review.status(), 200);
+  assert.equal((await review.json()).finalized_success, true);
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.getByRole("button", { name: /Copy job link/ }).click();
   const sharedLink = await page.evaluate(() => navigator.clipboard.readText());
@@ -29,18 +39,22 @@ try {
   const invited = await browser.newPage();
   await invited.goto(sharedLink, { waitUntil: "networkidle" });
   await invited.getByRole("heading", { name: "package_f2131d0cd28244b2" }).waitFor();
-  assert.equal(await invited.getByRole("tab", { name: "Respond to invite" }).getAttribute("aria-selected"), "true");
+  assert.equal(await invited.getByRole("tab", { name: "Open invite" }).getAttribute("aria-selected"), "true");
+  assert.match(await invited.locator(".next-step-copy").innerText(), /finished/);
   await invited.close();
 
-  await page.getByRole("tab", { name: "Request work" }).click();
-  await page.getByRole("button", { name: "Create job" }).click();
-  assert.match(await page.locator(".alert-error").innerText(), /Job ID/);
-  await page.getByRole("button", { name: "Generate" }).click();
+  await page.getByRole("tab", { name: "Create request" }).click();
+  await page.locator(".panel-main").getByRole("button", { name: "Create request" }).click();
+  assert.match(await page.locator(".alert-error").innerText(), /provider wallet address/);
+  await page.getByRole("button", { name: "New ID" }).click();
   assert.match(await page.locator(".inline-input input").inputValue(), /^job_[a-f0-9]{16}$/);
 
-  await page.getByRole("tab", { name: "Connect an agent" }).click();
-  assert.match(await page.locator(".api-disclaimer").innerText(), /API key by itself cannot authorize/);
-  assert.match(await page.locator(".agent-primer").innerText(), /local MCP server/);
+  await page.getByRole("tab", { name: "Agent setup" }).click();
+  assert.equal(await page.locator(".alert-error").count(), 0, "old form errors should clear when changing tasks");
+  assert.match(await page.locator(".agent-simple-flow").innerText(), /local MCP command/);
+  await page.locator(".agent-advanced summary").click();
+  assert.match(await page.locator(".api-disclaimer").innerText(), /API key alone cannot sign/);
+  await page.screenshot({ path: "artifacts/agent-setup.png", fullPage: true });
   const spec = await page.request.get(`${base}/openapi.json`);
   assert.equal(spec.status(), 200);
   assert.equal((await spec.json()).openapi, "3.1.0");
@@ -49,11 +63,12 @@ try {
   assert.equal(llms.status(), 200);
   assert.match(await llms.text(), /not a public job marketplace/);
 
+  await page.locator(".format-details summary").click();
   await page.getByRole("button", { name: /Single file v1/i }).click();
-  await page.getByRole("button", { name: /See a real finalized decision/ }).click();
+  await page.getByRole("button", { name: /Explore a completed example/ }).click();
   await page.getByRole("heading", { name: "deliveryos_cb5bcede778b4248" }).waitFor();
   assert.match(await page.locator(".job-detail").innerText(), /ACCEPTED/);
-  await page.getByRole("button", { name: /Evidence package v2/i }).click();
+  await page.getByRole("button", { name: /Up to six files v2/i }).click();
   const v2Health = await page.request.get(`${base}/api/v2/health`);
   assert.equal(v2Health.status(), 200);
   assert.equal((await v2Health.json()).protocol, "DELIVERYOS_PACKAGES_V2");
@@ -90,8 +105,12 @@ try {
   await mobile.goto(base, { waitUntil: "networkidle" });
   await mobile.screenshot({ path: "artifacts/mobile.png", fullPage: true });
   assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), true, "mobile page must not overflow horizontally");
+  const reduced = await browser.newPage({ reducedMotion: "reduce" });
+  await reduced.goto(base, { waitUntil: "networkidle" });
+  assert.equal(await reduced.locator(".live-pulse").first().evaluate((el) => getComputedStyle(el).animationName), "none");
+  await reduced.close();
   assert.deepEqual(errors, [], `browser errors: ${errors.join(", ")}`);
-  console.log("PASS v2-first desktop render without initial recent-job RPC, live job detail, share/deep-link handoff, form validation, agent onboarding, API discovery, v1 legacy, v2 package preflight, mocked wallet network switch, mobile width, no page errors");
+  console.log("PASS simplified v2-first UI, no initial recent-job RPC, real review proof, share/deep-link handoff, form defaults and validation, agent setup, API discovery, v1 legacy, v2 package preflight, mocked wallet network switch, mobile width, reduced motion, no page errors");
   console.log(`Screenshots: artifacts/desktop.png and artifacts/mobile.png (${base})`);
 } finally {
   await browser.close();

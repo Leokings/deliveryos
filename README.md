@@ -13,17 +13,22 @@ Public source: [github.com/Leokings/deliveryos](https://github.com/Leokings/deli
 
 ## First-time flow
 
-On the website, select **Single file v1** or **Evidence package v2**, then
-choose **Start a job** and connect the buyer wallet. Set a
-provider wallet, brief, 1–4 objective criteria, public repository prefix, due
-date, and revision allowance. The provider then opens the job ID, connects
-their own wallet, and accepts. For v1, the provider publishes one UTF-8 file
-at a full GitHub commit SHA. For v2, the provider publishes source files and
-then a canonical manifest at a later commit; see below. The provider enters
-the raw URL and clicks **Submit this version**. The site checks the exact bytes before the
-wallet signs. Finally, the buyer accepts or either party requests validator
-review. Wait for **finalized + successful execution**, then refresh the job.
-No API key is needed for public reads; no funds move in either version.
+First, click **Explore a completed example** on the website. No wallet is
+needed to read the accepted job, its public evidence, and its finalized review
+transaction. To make your own request, select **Create request**. Enter the
+invitee's wallet address, a plain-language task, 1–4 observable completion
+points, and a normal public GitHub repository link. The form supplies a job
+reference and a due date, both editable. Your wallet signs the request. Send
+the resulting job link to the invitee, who opens it, reads the terms, and
+accepts using the named wallet. This is a direct invitation, not a job board.
+
+The invitee publishes the finished files and submits their pinned evidence
+URL. V2 supports a package of 1–6 files and is the default; the older
+single-file format is under **Change format**. See the package instructions
+below before preparing v2 evidence. The buyer can approve a submission, or
+either party can ask GenLayer validators to review it. Wait for
+**finalized + successful execution**, then refresh the job. No API key is
+needed for public reads; no funds move in either version.
 
 ## Evidence packages (v2)
 
