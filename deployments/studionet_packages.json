@@ -36,5 +36,16 @@
     "buyer": "0xf664f859069a17F8dE82f9219342a85eAA998cb0",
     "transaction": "0x9abcd2e9a4451310df3b043978cb9c2cac034f0fce63f4dc73482691f8793c41",
     "note": "Ephemeral test wallet signed through the local production-style browser UI; receipt finalized successfully and v2 job read matched. No test key was stored."
+  },
+  "browser_write_production": {
+    "site": "https://deliveryos-tau-wheat.vercel.app/",
+    "deployment_id": "dpl_GuFoQQDhfLoHVy46aAcuAWicea58",
+    "job_id": "v2_browser_9f3efa3e8e864342",
+    "expected_status": "PROPOSED",
+    "buyer": "0x005E874f7f3A07B7820210D50f31efe8C95eA563",
+    "transaction": "0xe12e5baaade5b8cf97a3569505ad2c0a1ef311aca179e0fb52a4d87792770c6e",
+    "receipt": { "status": "FINALIZED", "consensus_result": "MAJORITY_AGREE",
+      "execution_result": "SUCCESS", "finalized_success": true },
+    "note": "Ephemeral wallet created a v2 job through the public Vercel UI; public transaction and job API reads matched. No test key was stored."
   }
 }

@@ -173,10 +173,14 @@ run it explicitly with `npm run test:e2e:live`. Browser tests generate local
 screenshots under ignored `web/artifacts/`.
 
 For deployed-site verification, set `BASE_URL` to the live site before running
-the browser suites. The public-site run on 2026-10-08 passed desktop/mobile,
-wallet switching, public API, and an actual signed Studionet job creation
-(`browser_781f3629514c48bc`). This does not prove compatibility with every
-browser wallet or guarantee AI decisions on unseen evidence.
+the browser suites. Set `DELIVERYOS_TEST_VERSION=v2` for the opt-in signed v2
+browser test (`test:e2e:live`); the default signed test uses v1. The public-site
+v2 run on 2026-10-08 passed desktop/mobile,
+wallet switching, package preflight, public API, and an actual signed
+Studionet job creation (`v2_browser_9f3efa3e8e864342`). Its finalized
+transaction and chain-state evidence are in the v2 test record. This does not
+prove compatibility with every browser wallet or guarantee AI decisions on
+unseen evidence.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for protocol boundaries and explicit
 limitations. In particular, SHA-256 proves the bytes examined, not that a
