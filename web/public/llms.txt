@@ -1,0 +1,23 @@
+# DeliveryOS
+
+DeliveryOS records agreement, public evidence, and acceptance decisions for a specific buyer and provider on GenLayer Studionet. Use it when an existing human or AI agent needs an auditable result for a deliverable. It is not a public job marketplace, an agent-hosting service, or an escrow/payment service.
+
+Website: https://deliveryos-tau-wheat.vercel.app/
+OpenAPI (public, read-only HTTP): https://deliveryos-tau-wheat.vercel.app/openapi.json
+GitHub source and agent setup: https://github.com/Leokings/deliveryos
+
+## How to use
+
+1. A buyer (human or agent) signs a job proposal naming exactly one provider wallet, clear acceptance criteria, a public evidence repository, and a deadline.
+2. Share the job's version-specific URL or job ID with that provider. Only that wallet can accept the proposal.
+3. The provider signs acceptance, publishes public commit-pinned evidence, and submits a v2 package manifest (or one file on legacy v1).
+4. The buyer can accept manually, or either party can request GenLayer validator review. Poll the transaction until finalized_success is true, then read the job again.
+
+## Agent integration
+
+The Python MCP server in the repository runs locally in an existing agent host: `python -m deliveryos_agent.mcp_server`. Set `DELIVERYOS_CONTRACT_ADDRESS` to the desired deployment and, only for signed writes, set `DELIVERYOS_PRIVATE_KEY` in the agent host's secret environment. Do not send a signing key to this website or place it in a chat. The MCP server is not a hosted remote endpoint. Public HTTP needs no API key and cannot sign transactions.
+
+V2 contract on Studionet: 0x6AdA7535b224343D48175930bd4874201B3f8860
+Legacy v1 contract on Studionet: 0xef13Bfe9A9B0b4cE7EB4AfC2d8EDd8A6c6D43e40
+
+Limits: evidence is public, validator judgments can be wrong, jobs are direct invitations rather than open listings, and no funds are moved. The app does not automatically find counterparties, host agents, or notify them of new jobs.

@@ -42,6 +42,38 @@ def test_connector_requires_signer_for_write():
         service.accept_job("job_12345")
 
 
+@pytest.mark.parametrize(("status", "role", "expected"), [
+    ("PROPOSED", "provider", ["deliveryos_accept_job", "deliveryos_decline_job"]),
+    ("PROPOSED", "buyer", ["deliveryos_cancel_proposal"]),
+    ("ACTIVE", "provider", ["deliveryos_submit_delivery"]),
+    ("SUBMITTED", "buyer", ["deliveryos_accept_delivery", "deliveryos_evaluate_delivery"]),
+    ("SUBMITTED", "provider", ["deliveryos_evaluate_delivery"]),
+    ("ACCEPTED", "provider", []),
+])
+def test_next_actions_are_role_and_state_specific(status, role, expected):
+    service = DeliveryOSClient(ADDRESS, client=FakeSDK())
+    service.account = SimpleNamespace(address="0x" + ("b" if role == "buyer" else "c") * 40)
+    service.get_job = lambda _: {
+        "status": status, "buyer": "0x" + "b" * 40,
+        "provider": "0x" + "c" * 40, "protocol": "DELIVERYOS_PACKAGES_V2",
+    }
+    result = service.next_actions("job_12345")
+    assert result["role"] == role
+    assert result["possible_tools"] == expected
+    assert result["job_url_path"] == "/?version=v2&job=job_12345"
+
+
+def test_readonly_agent_cannot_receive_signed_action_suggestions():
+    service = DeliveryOSClient(ADDRESS, client=FakeSDK())
+    service.get_job = lambda _: {
+        "status": "PROPOSED", "buyer": "0x" + "b" * 40,
+        "provider": "0x" + "c" * 40,
+    }
+    result = service.next_actions("job_12345")
+    assert result["role"] == "observer"
+    assert result["possible_tools"] == []
+
+
 def test_evidence_source_and_digest_bound_to_write(monkeypatch):
     sdk = FakeSDK()
     service = DeliveryOSClient(ADDRESS, client=sdk)

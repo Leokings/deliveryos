@@ -57,11 +57,11 @@ try {
       },
     };
   }, account.address);
-  await page.goto(version === "v2" ? `${base}/?version=v2` : base, { waitUntil: "networkidle" });
+  await page.goto(`${base}/?version=${version}`, { waitUntil: "networkidle" });
   if (version === "v2") await page.getByRole("button", { name: /Evidence package v2/i }).waitFor();
   await page.getByRole("button", { name: "Connect wallet" }).click();
   await page.getByRole("button", { name: /Browser wallet ·/ }).waitFor();
-  await page.getByRole("tab", { name: "Start a job" }).click();
+  await page.getByRole("tab", { name: "Request work" }).click();
   await page.locator(".inline-input input").fill(jobId);
   await page.getByPlaceholder("0x…").fill(providerAddress);
   await page.getByPlaceholder(/Describe the result/).fill("Deliver the public Digital Deliverable Verifier installation guide with its actual install command.");
@@ -84,6 +84,7 @@ try {
   assert.equal(job.status, "PROPOSED");
   assert.equal(job.protocol, version === "v2" ? "DELIVERYOS_PACKAGES_V2" : "DELIVERYOS_V1");
   assert.equal(job.buyer.toLowerCase(), account.address.toLowerCase());
+  await page.getByRole("button", { name: /Copy job link/ }).waitFor();
   console.log(`PASS ${version} browser EIP-1193 wallet signed a real Studionet job; finalized execution and chain state verified`);
 } finally {
   await browser.close();

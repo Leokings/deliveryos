@@ -106,6 +106,16 @@ user. An API key could authorize a hosted service, but a write still needs
 some wallet to sign it, and a hosted custodial signer would add security and
 operating costs that both versions intentionally avoid.
 
+The website now opens on the v2 workflow. A buyer (human or agent) proposes a
+job addressed to **one specific provider wallet**. The buyer shares the
+version-specific job URL; the provider (human or agent) connects that wallet
+and accepts or declines. This is a direct invitation, not a marketplace of
+open listings. The new `deliveryos_next_actions` MCP tool reads a job and
+suggests the tools available to the configured wallet without signing or
+submitting anything. The agent must still check the transaction hash for
+finality and execution success, then read the job again. Public API discovery
+is also available at `/openapi.json` and `/llms.txt`.
+
 From this directory:
 
 ```powershell

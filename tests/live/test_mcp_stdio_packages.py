@@ -32,6 +32,10 @@ async def test_agent_host_reads_v2_and_preflights_public_package():
         assert job.is_error is False
         assert "DELIVERYOS_PACKAGES_V2" in job.content[0].text
         assert "ACCEPTED" in job.content[0].text
+        next_actions = await agent.call_tool("deliveryos_next_actions", {"job_id": JOB_ID})
+        assert next_actions.is_error is False
+        assert "/?version=v2&job=" + JOB_ID in next_actions.content[0].text
+        assert "observer" in next_actions.content[0].text
         package = await agent.call_tool("deliveryos_verify_package", {
             "manifest_url": MANIFEST["manifest_url"],
             "evidence_prefix": PREFIX,

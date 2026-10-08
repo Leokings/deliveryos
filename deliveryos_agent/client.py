@@ -69,6 +69,48 @@ class DeliveryOSClient:
     def get_job(self, job_id: str) -> dict:
         return self._read("get_job", [job_id])
 
+    def next_actions(self, job_id: str) -> dict:
+        """Explain the caller's role and likely next tools without signing anything.
+
+        This is guidance only. The contract checks authorization, state, and its
+        clock again when a transaction actually executes.
+        """
+        if not _JOB_ID.fullmatch(job_id):
+            raise ValueError("Job ID must be 8-64 letters, digits, underscores or hyphens")
+        job = self.get_job(job_id)
+        wallet = (self.wallet_address or "").lower()
+        role = ("buyer" if wallet and wallet == str(job.get("buyer", "")).lower()
+                else "provider" if wallet and wallet == str(job.get("provider", "")).lower()
+                else "observer")
+        status = str(job.get("status", "UNKNOWN"))
+        actions: list[str] = []
+        if status == "PROPOSED":
+            if role == "provider":
+                actions = ["deliveryos_accept_job", "deliveryos_decline_job"]
+            elif role == "buyer":
+                actions = ["deliveryos_cancel_proposal"]
+        elif status in ("ACTIVE", "REVISION") and role == "provider":
+            actions = ["deliveryos_submit_delivery"]
+        elif status == "SUBMITTED":
+            if role == "buyer":
+                actions = ["deliveryos_accept_delivery", "deliveryos_evaluate_delivery"]
+            elif role == "provider":
+                actions = ["deliveryos_evaluate_delivery"]
+        protocol = "v2" if job.get("protocol") == "DELIVERYOS_PACKAGES_V2" else "v1"
+        return {
+            "job_id": job_id,
+            "status": status,
+            "role": role,
+            "wallet_address": self.wallet_address,
+            "possible_tools": actions,
+            "job_url_path": f"/?version={protocol}&job={job_id}",
+            "next_step": ("Choose a possible tool, then check its transaction hash until "
+                          "finalized_success is true and read the job again."
+                          if actions else "No role-specific write is currently suggested. "
+                          "Check the assigned wallet and job state."),
+            "warning": "Suggestions are not authorization; the contract enforces roles, deadlines, and state.",
+        }
+
     def get_submission(self, job_id: str, version: int) -> dict:
         return self._read("get_submission", [job_id, version])
 

@@ -18,6 +18,10 @@ async def test_mcp_exposes_read_and_signed_write_tools(monkeypatch):
         def get_job(self, job_id):
             return {"job_id": job_id, "status": "SUBMITTED"}
 
+        def next_actions(self, job_id):
+            return {"job_id": job_id, "role": "buyer",
+                    "possible_tools": ["deliveryos_accept_delivery"]}
+
         def evaluate_delivery(self, job_id):
             return {"transaction_hash": "0x" + "c" * 64,
                     "status": "SUBMITTED_TO_NETWORK", "method": "evaluate_delivery"}
@@ -26,7 +30,7 @@ async def test_mcp_exposes_read_and_signed_write_tools(monkeypatch):
     async with Client(mcp_server.mcp, raise_exceptions=True) as client:
         listing = await client.list_tools()
         names = {tool.name for tool in listing.tools}
-        assert {"deliveryos_identity", "deliveryos_get_job",
+        assert {"deliveryos_identity", "deliveryos_get_job", "deliveryos_next_actions",
                 "deliveryos_submit_delivery", "deliveryos_evaluate_delivery",
                 "deliveryos_transaction_status", "deliveryos_get_job_count",
                 "deliveryos_get_job_id", "deliveryos_build_package_manifest",
@@ -35,6 +39,10 @@ async def test_mcp_exposes_read_and_signed_write_tools(monkeypatch):
         job = await client.call_tool("deliveryos_get_job", {"job_id": "job_12345"})
         assert job.is_error is False
         assert job.content and "SUBMITTED" in job.content[0].text
+
+        guidance = await client.call_tool("deliveryos_next_actions", {"job_id": "job_12345"})
+        assert guidance.is_error is False
+        assert "deliveryos_accept_delivery" in guidance.content[0].text
 
         write = await client.call_tool("deliveryos_evaluate_delivery", {"job_id": "job_12345"})
         assert write.is_error is False

@@ -50,8 +50,8 @@ function statusTone(status: string) {
 }
 
 export default function HomePage() {
-  const [tab, setTab] = useState<Tab>("explore");
-  const [version, setVersion] = useState<ContractVersion>("v1");
+  const [tab, setTab] = useState<Tab>("create");
+  const [version, setVersion] = useState<ContractVersion>("v2");
   const [wallets, setWallets] = useState<WalletChoice[]>([]);
   const [wallet, setWallet] = useState<ConnectedWallet | null>(null);
   const [walletPicker, setWalletPicker] = useState(false);
@@ -79,9 +79,9 @@ export default function HomePage() {
   function chooseVersion(next: ContractVersion) {
     if (next === version) return;
     setVersion(next);
-    setJob(null); setSubmission(null); setRecent(null); setLookupId("");
+    setJob(null); setSubmission(null); setRecent(null); setRecentError(""); setLookupId("");
     setError(""); setNotice(""); setTxHash(""); setTxStatus(null); setEvidenceUrl("");
-    window.history.replaceState(null, "", next === "v2" ? "?version=v2" : window.location.pathname);
+    window.history.replaceState(null, "", `?version=${next}`);
   }
 
   const refreshRecent = useCallback(async () => {
@@ -107,7 +107,7 @@ export default function HomePage() {
       setLookupId(id);
       setJob(nextJob);
       setSubmission(nextSubmission);
-      window.history.replaceState(null, "", `?${version === "v2" ? "version=v2&" : ""}job=${encodeURIComponent(id)}`);
+      window.history.replaceState(null, "", `?version=${version}&job=${encodeURIComponent(id)}`);
     } catch (cause) {
       setError((cause as Error).message);
     }
@@ -115,14 +115,40 @@ export default function HomePage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("version") === "v2" && version !== "v2") {
-      setVersion("v2");
+    // Older v1 invite links had no version parameter. Preserve those links.
+    const requested = params.get("version") === "v1" || (!params.has("version") && params.has("job")) ? "v1" : "v2";
+    if (requested !== version) {
+      setVersion(requested);
       return;
     }
-    refreshRecent();
     const fromUrl = params.get("job");
-    if (fromUrl && JOB_ID_PATTERN.test(fromUrl)) loadJob(fromUrl);
-  }, [loadJob, refreshRecent, version]);
+    if (fromUrl && JOB_ID_PATTERN.test(fromUrl)) {
+      setTab("manage");
+      loadJob(fromUrl);
+    }
+  }, [loadJob, version]);
+
+  // Recent jobs are a convenience, not a reason to spend RPC calls on every
+  // landing-page view. Load them only when someone opens Explore.
+  useEffect(() => {
+    if (tab === "explore" && !recent) refreshRecent();
+  }, [tab, recent, refreshRecent]);
+
+  function openTab(next: Tab) {
+    setTab(next);
+    document.getElementById("workspace")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function copyInviteLink() {
+    if (!job) return;
+    const link = `${window.location.origin}/?version=${version}&job=${encodeURIComponent(job.job_id)}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setNotice(job.status === "PROPOSED" ? "Invite link copied. Send it to the named provider; they must connect that wallet to accept." : "Job link copied. Anyone can read this public job.");
+    } catch {
+      setError(`Could not access the clipboard. Copy this link manually: ${link}`);
+    }
+  }
 
   useEffect(() => {
     const found = new Map<string, WalletChoice>();
@@ -303,41 +329,31 @@ export default function HomePage() {
     <div className="ambient ambient-one" aria-hidden="true" /><div className="ambient ambient-two" aria-hidden="true" />
     <header className="site-header wrap">
       <a className="brand" href="#top" aria-label="DeliveryOS home"><span className="brand-mark">d<span>•</span></span><span>delivery<span className="brand-accent">os</span></span></a>
-      <nav className="desktop-nav" aria-label="Main navigation"><a href="#how">How it works</a><a href="#workspace">Workspace</a><a href="#developers">For agents</a></nav>
+      <nav className="desktop-nav" aria-label="Main navigation"><a href="#workspace" onClick={() => setTab("create")}>Request work</a><a href="#workspace" onClick={() => setTab("manage")}>Open an invite</a><a href="#workspace" onClick={() => setTab("agents")}>For agents</a></nav>
       <button className="wallet-button" onClick={openWallet} type="button"><span className="wallet-dot" />{wallet ? `${wallet.name} · ${short(wallet.address, 5, 4)}` : "Connect wallet"}</button>
     </header>
 
     <section className="hero wrap" id="top">
       <div className="hero-copy">
-        <div className="eyebrow"><span className="live-pulse" /> LIVE ON GENLAYER STUDIONET <span className="eyebrow-line" /> DECISIONS, NOT PAYMENTS</div>
-        <h1>Good work deserves<br /><em>a clear decision.</em></h1>
-        <p>Agree on the job. Deliver a version. Let the buyer accept it, or ask GenLayer validators to assess the same public evidence against the same frozen criteria.</p>
-        <div className="hero-actions"><a className="button button-primary" href="#workspace" onClick={() => setTab("create")}>Start a job <span>↗</span></a><button className="button button-light" onClick={() => { setTab("explore"); loadJob(exampleJob); document.getElementById("workspace")?.scrollIntoView({ behavior: "smooth" }); }}>See a live decision <span>→</span></button></div>
-        <div className="hero-foot"><span><i className="check">✓</i> Public, SHA-256 pinned evidence</span><span><i className="check">✓</i> Each party uses its own wallet</span></div>
+        <div className="eyebrow"><span className="live-pulse" /> GENLAYER STUDIONET · DECISIONS, NOT PAYMENTS</div>
+        <h1>Work together.<br /><em>Know what&apos;s done.</em></h1>
+        <p>Make a direct work agreement between two wallets. Deliver public, pinned evidence. Record an acceptance, revision, or rejection that both people and agents can read.</p>
+        <div className="hero-actions"><button className="button button-primary" onClick={() => openTab("create")}>Request work <span>↗</span></button><button className="button button-light" onClick={() => openTab("manage")}>Respond to an invite <span>→</span></button></div>
+        <button className="hero-example" onClick={() => { openTab("manage"); loadJob(exampleJob); }}>See a real finalized decision →</button>
       </div>
-      <div className="hero-visual" aria-label="DeliveryOS decision workflow">
-        <div className="orbit orbit-a" /><div className="orbit orbit-b" />
-        <div className="flow-card flow-card-a"><span className="flow-step">01 / SCOPE</span><strong>Clear criteria</strong><small>Frozen before work begins</small><span className="flow-icon">✧</span></div>
-        <div className="flow-connector flow-connector-a" />
-        <div className="flow-card flow-card-b"><span className="flow-step">02 / EVIDENCE</span><strong>One exact version</strong><small>Public file or package · pinned hashes</small><span className="flow-hash">a1b2…9f4e</span></div>
-        <div className="flow-connector flow-connector-b" />
-        <div className="flow-card flow-card-c"><span className="flow-step">03 / DECISION</span><strong>Accepted <span className="verdict-dot">●</span></strong><small>Buyer or validator consensus</small><span className="flow-stamp">FINALIZED</span></div>
-        <div className="visual-caption">A shared source of truth for human and agent teams.</div>
+      <div className="handoff-card" aria-label="Human and agent handoff">
+        <span className="mini-label">ONE WORKFLOW, TWO WAYS IN</span>
+        <div className="handoff-row"><span className="handoff-icon">✳</span><div><strong>A person or agent proposes</strong><small>Names one provider wallet and locks the acceptance criteria.</small></div></div>
+        <div className="handoff-row"><span className="handoff-icon warm">↗</span><div><strong>The named provider accepts</strong><small>That provider can be a human or an agent. There is no open job board.</small></div></div>
+        <div className="handoff-row"><span className="handoff-icon mint">✓</span><div><strong>Both see the same outcome</strong><small>Buyer accepts, or validators review the pinned work.</small></div></div>
+        <button className="handoff-agent" onClick={() => openTab("agents")}>Connecting an AI agent? See the MCP setup <span>→</span></button>
       </div>
     </section>
 
-    <section className="trust-strip"><div className="wrap trust-inner"><div><span className="mini-label">THE PROTOCOL</span><strong>One scope. Many versions. One final outcome.</strong></div><div className="trust-pills"><span>01 Bilateral agreement</span><span>02 Verifiable bytes</span><span>03 Consensus decision</span></div></div></section>
-
-    <section className="how wrap" id="how"><div className="section-heading"><span className="mini-label">HOW IT WORKS</span><h2>A clean path from “done” to <em>decided.</em></h2><p>No mysterious score. No silent auto-acceptance. Every meaningful step is explicit and traceable.</p></div><div className="steps">
-      <article className="step"><span className="step-num">01</span><div className="step-art step-art-one">✳</div><h3>Agree on the work</h3><p>Buyer names the provider, writes a brief and up to four acceptance criteria, approves one public repository, and sets a due date.</p></article>
-      <article className="step"><span className="step-num">02</span><div className="step-art step-art-two">≋</div><h3>Deliver exact evidence</h3><p>Provider accepts, then submits one pinned text file (v1) or a manifest of up to six pinned files (v2). Validators verify the exact bytes before deciding.</p></article>
-      <article className="step"><span className="step-num">03</span><div className="step-art step-art-three">✓</div><h3>Decide transparently</h3><p>Buyer accepts directly, or either party asks validators to check each criterion. The result is accepted, revised, rejected, or inconclusive.</p></article>
-    </div></section>
-
-    <section className="workspace-section" id="workspace"><div className="wrap"><div className="workspace-intro"><div><span className="mini-label">THE WORKSPACE</span><h2>Make the next move.</h2><p>Explore a finalized job, start your own, or act on a job you are part of.</p></div><div className="network-chip"><span className="live-pulse" /> Studionet · 61999</div></div>
+    <section className="workspace-section" id="workspace"><div className="wrap"><div className="workspace-intro"><div><span className="mini-label">YOUR WORKSPACE</span><h2>Choose your next move.</h2><p>Creating work, answering an invite, or connecting an agent all use the same public contract.</p></div><div className="network-chip"><span className="live-pulse" /> Studionet · 61999</div></div>
       <div className="protocol-picker" role="group" aria-label="Delivery protocol"><button type="button" className={version === "v1" ? "selected" : ""} aria-pressed={version === "v1"} onClick={() => chooseVersion("v1")}>Single file <span>v1</span></button><button type="button" className={version === "v2" ? "selected" : ""} aria-pressed={version === "v2"} onClick={() => chooseVersion("v2")}>Evidence package <span>v2</span></button><p>{version === "v2" ? "Up to six public files · one source commit, then a separate manifest commit · 12,000 bytes total" : "One public UTF-8 file · commit-pinned · up to 4,800 bytes"}</p></div>
       <div className="workspace-shell"><div className="tabs" role="tablist" aria-label="Workspace sections">
-        {([ ["explore", "Explore jobs"], ["create", "Start a job"], ["manage", "Manage a job"], ["agents", "Agent API"] ] as [Tab, string][]).map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={tab === key} className={`tab ${tab === key ? "active" : ""}`} onClick={() => setTab(key)}>{label}</button>)}
+        {([ ["explore", "Explore"], ["create", "Request work"], ["manage", "Respond to invite"], ["agents", "Connect an agent"] ] as [Tab, string][]).map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={tab === key} className={`tab ${tab === key ? "active" : ""}`} onClick={() => setTab(key)}>{label}</button>)}
       </div>
       {(error || notice || txHash) && <div className="feedback-stack" aria-live="polite">{error && <div className="alert alert-error"><span>!</span><p>{error}</p><button onClick={() => setError("")} aria-label="Dismiss error">×</button></div>}{notice && <div className="alert alert-info"><span>i</span><p>{notice}</p><button onClick={() => setNotice("")} aria-label="Dismiss notice">×</button></div>}{txHash && <div className="tx-line"><span>Latest transaction</span><code>{short(txHash, 14, 10)}</code><button onClick={refreshTransaction}>Check status ↻</button>{txStatus && <strong className={txStatus.finalized_success ? "tx-good" : ""}>{txStatus.status} · {txStatus.execution_result}</strong>}</div>}</div>}
 
@@ -358,9 +374,11 @@ export default function HomePage() {
       {tab === "agents" && <div className="panel-grid"><div className="panel-main"><h3>Built for existing agents</h3><p className="muted">An agent can read decisions over HTTP. To create, submit, or review, it uses the bundled MCP tools with its own wallet—not a shared API key.</p><div className="api-card"><span>READ A FINALIZED JOB</span><code>GET {apiBase}/jobs/{exampleJob}</code><a href={`${apiBase}/jobs/${exampleJob}`} target="_blank" rel="noreferrer">Open response ↗</a></div><div className="api-card"><span>CHECK EXECUTION</span><code>GET /api/transactions/{'{transaction_hash}'}</code><a href={version === "v2" ? "/api/v2/openapi" : "/api/openapi"} target="_blank" rel="noreferrer">API reference ↗</a></div><div className="api-card"><span>SIGNED WRITES</span><code>python -m deliveryos_agent.mcp_server</code><a href="https://github.com/Leokings/deliveryos#let-an-ai-agent-use-it" target="_blank" rel="noreferrer">MCP setup guide ↗</a></div>{version === "v2" && <div className="api-card"><span>PACKAGE EXAMPLE</span><code>Two pinned files · canonical manifest</code><a href={PACKAGE_EXAMPLE} target="_blank" rel="noreferrer">Open real manifest ↗</a></div>}<div className="api-disclaimer">No API key is required for public reads. An API key by itself cannot authorize a GenLayer transaction; the buyer or provider wallet must sign it.</div></div><aside className="panel-aside guidance"><span className="mini-label">AGENT PLAYBOOK</span><h3>Read → decide → sign → verify.</h3><ol><li>Fetch the job’s frozen criteria.</li><li>Prepare public, commit-pinned evidence.</li><li>Ask a human or authorized agent wallet to sign.</li><li>Poll the transaction until finality <em>and</em> execution success.</li><li>Read the finalized job again.</li></ol></aside></div>}
       </div>
       {job && <div className="job-detail"><div className="job-head"><div><span className="mini-label">FINALIZED CHAIN STATE · {version.toUpperCase()}</span><h3>{job.job_id}</h3><p>{explainStatus(job.status)}</p></div><div className="job-head-actions"><span className={`status status-${statusTone(job.status)}`}>{job.status}</span><button onClick={() => loadJob(job.job_id)} className="text-button">Refresh ↻</button></div></div><div className="job-fields"><div><span>Buyer</span><code title={job.buyer}>{short(job.buyer, 9, 7)}</code></div><div><span>Provider</span><code title={job.provider}>{short(job.provider, 9, 7)}</code></div><div><span>Due</span><strong>{utc(job.due_epoch)}</strong></div><div><span>Current version</span><strong>{job.current_version || "Awaiting delivery"}</strong></div></div><div className="job-body"><div><span className="mini-label">THE BRIEF</span><p>{job.brief}</p></div><div><span className="mini-label">ACCEPTANCE CRITERIA</span><ol>{job.criteria.map((item, index) => <li key={index}><span className={`criterion-indicator ${job.latest_statuses[index]?.toLowerCase() ?? ""}`}>{job.latest_statuses[index] ?? String(index + 1).padStart(2, "0")}</span>{item}</li>)}</ol></div></div>{submission && <div className="submission-row"><div><span className="mini-label">VERSION {submission.version} EVIDENCE</span><a href={submission.url} target="_blank" rel="noreferrer">{short(submission.url, 48, 12)} ↗</a><small>SHA-256 {submission.sha256} · {submission.size_bytes} bytes{submission.evidence_type === "PACKAGE" ? ` · ${submission.file_count || "pending"} files · ${submission.total_bytes || "pending"} source bytes` : ""}</small></div><span className={`status status-${statusTone(submission.verdict || "SUBMITTED")}`}>{submission.verdict || "AWAITING REVIEW"}</span></div>}<div className="job-bottom"><span>Scope SHA-256 <code>{short(job.scope_digest, 15, 14)}</code></span><span>Decision source <strong>{job.decision_source || "Pending"}</strong></span><span>Deadline <strong>{utc(job.submission_deadline_epoch)}</strong></span></div></div>}
+      {tab === "agents" && <div className="agent-primer"><div><span className="mini-label">ACTUAL INTEGRATION</span><h3>Bring your own agent.</h3><p>DeliveryOS does not run an autonomous worker for you. Your existing agent connects to the <strong>local MCP server</strong>, reads job state, and signs with its own authorized wallet. A human can use this site for the same job.</p></div><div className="agent-primer-steps"><span>1 · Install the Python connector from GitHub</span><span>2 · Configure the contract and your agent wallet</span><span>3 · Add the MCP command to your agent host</span><span>4 · Send it the job ID; verify each transaction</span></div><small>No hosted remote MCP or API-key-only write access. Keep signing keys in your agent host’s secret storage, never in this website.</small></div>}
+      {job && <div className="share-strip"><div><strong>{job.status === "PROPOSED" ? "Ready to hand this job over?" : "Keep everyone on the same page."}</strong><span>{job.status === "PROPOSED" ? "Send the link to the named provider. Only their wallet can accept." : "Share this public, version-specific job link with a person or agent."}</span></div><button type="button" onClick={copyInviteLink}>Copy job link ↗</button></div>}
     </div></section>
 
-    <section className="limit-section wrap"><div className="limit-card"><span className="mini-label">A NOTE ON TRUST</span><h2>Strong evidence. Honest boundaries.</h2><p>DeliveryOS can establish which public bytes were assessed and record a consensus-backed decision. It cannot prove every real-world claim in a document, keep your evidence private, or move funds in v1. Use objective criteria and review consequential results.</p><a href="https://github.com/Leokings/deliveryos/blob/main/SECURITY.md" target="_blank" rel="noreferrer">Read the security model <span>↗</span></a></div><div className="limit-decor" aria-hidden="true"><div>◎</div><span>VERIFIABLE ≠ INFALLIBLE</span></div></section>
+    <section className="limit-section wrap"><div className="limit-card"><span className="mini-label">KNOW THE LIMITS</span><h2>Clear evidence. Human judgment.</h2><p>DeliveryOS pins public bytes and records decisions; it cannot prove every real-world claim. Evidence is public, validator judgment can be wrong, and neither version moves funds.</p><a href="https://github.com/Leokings/deliveryos/blob/main/SECURITY.md" target="_blank" rel="noreferrer">Read the security model <span>↗</span></a></div></section>
     <footer className="footer" id="developers"><div className="wrap footer-inner"><div><a className="brand" href="#top"><span className="brand-mark">d<span>•</span></span><span>delivery<span className="brand-accent">os</span></span></a><p>Clear decisions for delivered work.</p></div><div className="footer-links"><a href={version === "v2" ? "/api/v2/openapi" : "/api/openapi"} target="_blank">API spec ↗</a><a href="https://github.com/Leokings/deliveryos" target="_blank" rel="noreferrer">GitHub ↗</a><a href={EXPLORER} target="_blank" rel="noreferrer">Studionet explorer ↗</a></div><small>GenLayer Studionet · Chain {CHAIN_ID} · Contract {short(contractFor(version), 10, 8)}<br />Decision protocol {version}. No escrow or payment processing.</small></div></footer>
 
     {walletPicker && <div className="modal-backdrop" role="presentation" onMouseDown={() => setWalletPicker(false)}><div className="wallet-modal" role="dialog" aria-modal="true" aria-labelledby="wallet-title" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setWalletPicker(false)} aria-label="Close wallet chooser">×</button><span className="mini-label">CHOOSE YOUR WALLET</span><h2 id="wallet-title">Connect to Studionet</h2><p>Pick the wallet that holds your buyer or provider address. You will approve every on-chain write.</p><div className="wallet-list">{wallets.map((choice) => <button key={choice.id} onClick={() => connectWallet(choice)}><span className="wallet-symbol">◈</span>{choice.name}<span>→</span></button>)}</div></div></div>}

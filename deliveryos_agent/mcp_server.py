@@ -37,6 +37,12 @@ def deliveryos_get_job(job_id: str) -> dict:
 
 
 @mcp.tool()
+def deliveryos_next_actions(job_id: str) -> dict:
+    """Read a job and suggest tools for this configured wallet; never signs automatically."""
+    return _service().next_actions(job_id)
+
+
+@mcp.tool()
 def deliveryos_get_submission(job_id: str, version: int) -> dict:
     """Read a finalized immutable delivery version and its content digest."""
     return _service().get_submission(job_id, version)

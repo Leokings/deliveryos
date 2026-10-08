@@ -8,34 +8,52 @@ try {
   await mkdir("artifacts", { recursive: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
   const errors = [];
+  let recentRequests = 0;
   page.on("pageerror", (error) => errors.push(error.message));
+  page.on("request", (request) => { if (request.url().includes("/api/v2/jobs?limit=3")) recentRequests++; });
   const home = await page.goto(base, { waitUntil: "networkidle" });
   assert.equal(home.status(), 200);
-  await page.getByRole("heading", { name: /Good work deserves/i }).waitFor();
+  await page.getByRole("heading", { name: /Work together/i }).waitFor();
+  assert.equal(recentRequests, 0, "landing view should not spend Studionet RPC calls on recent jobs");
   await page.screenshot({ path: "artifacts/desktop.png", fullPage: true });
 
-  await page.getByRole("button", { name: "See a live decision" }).click();
-  await page.getByRole("heading", { name: "deliveryos_cb5bcede778b4248" }).waitFor();
+  await page.getByRole("button", { name: /See a real finalized decision/ }).click();
+  await page.getByRole("heading", { name: "package_f2131d0cd28244b2" }).waitFor();
   assert.match(await page.locator(".job-detail").innerText(), /ACCEPTED/);
   assert.match(await page.locator(".job-detail").innerText(), /MET/);
+  assert.match(await page.locator(".job-detail").innerText(), /2 files/);
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: /Copy job link/ }).click();
+  const sharedLink = await page.evaluate(() => navigator.clipboard.readText());
+  assert.match(sharedLink, /\?version=v2&job=package_f2131d0cd28244b2$/);
+  const invited = await browser.newPage();
+  await invited.goto(sharedLink, { waitUntil: "networkidle" });
+  await invited.getByRole("heading", { name: "package_f2131d0cd28244b2" }).waitFor();
+  assert.equal(await invited.getByRole("tab", { name: "Respond to invite" }).getAttribute("aria-selected"), "true");
+  await invited.close();
 
-  await page.getByRole("tab", { name: "Start a job" }).click();
+  await page.getByRole("tab", { name: "Request work" }).click();
   await page.getByRole("button", { name: "Create job" }).click();
   assert.match(await page.locator(".alert-error").innerText(), /Job ID/);
   await page.getByRole("button", { name: "Generate" }).click();
   assert.match(await page.locator(".inline-input input").inputValue(), /^job_[a-f0-9]{16}$/);
 
-  await page.getByRole("tab", { name: "Agent API" }).click();
+  await page.getByRole("tab", { name: "Connect an agent" }).click();
   assert.match(await page.locator(".api-disclaimer").innerText(), /API key by itself cannot authorize/);
-  const spec = await page.request.get(`${base}/api/openapi`);
+  assert.match(await page.locator(".agent-primer").innerText(), /local MCP server/);
+  const spec = await page.request.get(`${base}/openapi.json`);
   assert.equal(spec.status(), 200);
   assert.equal((await spec.json()).openapi, "3.1.0");
+  assert.equal((await spec.json()).info.version, "2.0.0");
+  const llms = await page.request.get(`${base}/llms.txt`);
+  assert.equal(llms.status(), 200);
+  assert.match(await llms.text(), /not a public job marketplace/);
 
+  await page.getByRole("button", { name: /Single file v1/i }).click();
+  await page.getByRole("button", { name: /See a real finalized decision/ }).click();
+  await page.getByRole("heading", { name: "deliveryos_cb5bcede778b4248" }).waitFor();
+  assert.match(await page.locator(".job-detail").innerText(), /ACCEPTED/);
   await page.getByRole("button", { name: /Evidence package v2/i }).click();
-  await page.getByRole("button", { name: "See a live decision" }).click();
-  await page.getByRole("heading", { name: "package_f2131d0cd28244b2" }).waitFor();
-  assert.match(await page.locator(".job-detail").innerText(), /MET/);
-  assert.match(await page.locator(".job-detail").innerText(), /2 files/);
   const v2Health = await page.request.get(`${base}/api/v2/health`);
   assert.equal(v2Health.status(), 200);
   assert.equal((await v2Health.json()).protocol, "DELIVERYOS_PACKAGES_V2");
@@ -73,7 +91,7 @@ try {
   await mobile.screenshot({ path: "artifacts/mobile.png", fullPage: true });
   assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), true, "mobile page must not overflow horizontally");
   assert.deepEqual(errors, [], `browser errors: ${errors.join(", ")}`);
-  console.log("PASS v1/v2 desktop render, live job detail, form validation, agent API, v2 package preflight, mocked wallet network switch, mobile width, no page errors");
+  console.log("PASS v2-first desktop render without initial recent-job RPC, live job detail, share/deep-link handoff, form validation, agent onboarding, API discovery, v1 legacy, v2 package preflight, mocked wallet network switch, mobile width, no page errors");
   console.log(`Screenshots: artifacts/desktop.png and artifacts/mobile.png (${base})`);
 } finally {
   await browser.close();

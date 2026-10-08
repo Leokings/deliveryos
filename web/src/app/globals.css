@@ -235,3 +235,50 @@ input::placeholder,textarea::placeholder{color:#abb7a8}
 @media(max-width:1000px){.hero{grid-template-columns:1fr 1fr;gap:18px}.hero h1{font-size:54px}.hero-visual{height:450px}.flow-card-a{left:15px}.flow-card-b{right:14px}.flow-card-c{left:25px}.trust-inner{align-items:flex-start;flex-direction:column;padding:22px 0}.steps{gap:10px}.step{padding:20px}.panel-grid{grid-template-columns:1.45fr 1fr}.panel-main{padding:30px}.panel-aside{padding:30px}}
 @media(max-width:760px){.wrap{width:min(100% - 32px,620px)}.site-header{height:75px}.desktop-nav{display:none}.brand{font-size:21px}.wallet-button{padding:10px 12px;font-size:11px}.hero{display:flex;flex-direction:column;align-items:stretch;min-height:0;padding-top:42px;padding-bottom:60px;gap:44px}.hero h1{font-size:clamp(47px,11vw,67px);letter-spacing:-3.5px}.hero-copy>p{font-size:15px}.hero-visual{height:410px}.flow-card-a{top:45px;left:20px}.flow-card-b{top:152px;right:20px}.flow-card-c{top:278px;left:36px}.visual-caption{display:none}.how{padding:76px 0}.steps{grid-template-columns:1fr}.step{min-height:220px}.step-art{margin:15px 0;width:58px;height:58px;font-size:35px}.workspace-section{padding:70px 0}.workspace-intro{align-items:flex-start;flex-direction:column}.workspace-intro h2{font-size:43px}.panel-grid{grid-template-columns:1fr}.panel-main{padding:27px}.panel-aside{border-left:0;border-top:1px solid #e6ede3;padding:27px}.aside-illustration{display:none}.job-fields{grid-template-columns:1fr 1fr}.job-body{grid-template-columns:1fr;gap:10px}.limit-section{grid-template-columns:1fr;padding:70px 0}.limit-card{padding:34px}.limit-decor{min-height:160px}.limit-decor div{font-size:80px}.footer-inner{flex-direction:column}.footer small{text-align:left}.footer-links{padding:0}}
 @media(max-width:460px){.eyebrow{font-size:9px}.eyebrow-line{width:10px}.hero h1{font-size:47px}.hero-foot{gap:12px}.hero-visual{height:380px}.flow-card{padding:13px;min-width:180px}.flow-card-a{top:31px;left:8px}.flow-card-b{top:135px;right:8px}.flow-card-c{top:263px;left:20px;min-width:215px}.flow-card strong{font-size:15px}.flow-card small{font-size:10px}.flow-stamp{position:static;align-self:flex-end;margin-top:5px}.trust-pills span{font-size:10px;padding:8px}.section-heading h2{font-size:38px}.tabs{padding:6px}.tab{padding:11px 12px;font-size:11px}.panel-main{padding:20px}.form-grid{grid-template-columns:1fr}.form-footer{align-items:flex-start;flex-direction:column}.search-row{flex-direction:column}.job-detail{padding:20px}.job-head{flex-direction:column}.job-fields{grid-template-columns:1fr 1fr}.submission-row{align-items:flex-start;flex-direction:column}.footer-links{flex-wrap:wrap}}
+
+/* Workspace-first presentation. The core protocol controls remain unchanged. */
+body{background:#fffaf2}
+.ambient-one{background:radial-gradient(circle,#ffe9cf 0,rgba(255,233,207,0) 68%)}
+.ambient-two{top:280px;background:radial-gradient(circle,#e6f4db 0,rgba(230,244,219,0) 65%)}
+.site-header{height:78px}
+.hero{min-height:0;padding-top:34px;padding-bottom:55px;grid-template-columns:1.05fr .95fr;gap:54px;align-items:center}
+.hero h1{font-size:clamp(50px,5.2vw,76px);margin:16px 0 18px}
+.hero-copy>p{font-size:17px;line-height:1.55;margin-bottom:22px}
+.hero-example{display:inline-flex;margin-top:22px;padding:0;border:0;background:none;color:#47775a;font-size:14px;font-weight:800;text-decoration:underline;text-underline-offset:5px}
+.handoff-card{border:1px solid #ebddd0;border-radius:27px;background:#fff;box-shadow:0 24px 70px rgba(107,72,36,.10);padding:27px;position:relative;overflow:hidden}
+.handoff-card:before{content:"";position:absolute;width:190px;height:190px;right:-75px;top:-82px;border-radius:50%;background:#ffe9d5;opacity:.8}
+.handoff-card>.mini-label{position:relative;color:#bc744f}
+.handoff-row{display:flex;align-items:flex-start;gap:16px;padding:16px 0;border-bottom:1px solid #f0ece5;position:relative}
+.handoff-row strong,.handoff-row small{display:block}
+.handoff-row strong{font-size:16px;letter-spacing:-.3px;color:#203e36}
+.handoff-row small{font-size:13px;line-height:1.5;margin-top:5px;color:#64796c}
+.handoff-icon{width:38px;height:38px;border-radius:12px;background:#e8f2d2;color:#648d37;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+.handoff-icon.warm{background:#ffeadb;color:#d2825e}.handoff-icon.mint{background:#ddf3e8;color:#3a8d71}
+.handoff-agent{width:100%;display:flex;justify-content:space-between;gap:10px;margin-top:18px;padding:14px 16px;border:0;border-radius:12px;background:#1d433b;color:#fff;text-align:left;font-size:13px;font-weight:800}
+.handoff-agent:hover{background:#2e6657}
+.workspace-section{padding:56px 0 80px;background:#f3f5ea;scroll-margin-top:20px}
+.workspace-intro{margin-bottom:24px}.workspace-intro h2{font-size:clamp(34px,3.7vw,47px)}
+.protocol-picker p{font-size:12px}.tab{font-size:14px}
+.panel-main>h3{font-size:27px}.muted{font-size:14px;color:#627a6c}
+.field>span{font-size:13px}.field input,.field textarea,.field select{font-size:14px}.field small{font-size:12px}
+.panel-aside p,.guidance ul,.guidance ol{font-size:14px}
+.recent-item strong,.job-body li,.job-head p{font-size:13px}.recent-item small{font-size:12px}
+.status{font-size:11px}.api-card code,.api-card a,.api-disclaimer{font-size:12px}
+.agent-primer,.share-strip{border:1px solid #d9e8d2;border-radius:18px;background:#fff;box-shadow:0 12px 35px rgba(22,55,48,.04);margin-top:18px;padding:24px}
+.agent-primer{display:grid;grid-template-columns:1fr 1fr;gap:22px;background:#fdfef9}
+.agent-primer h3{font-size:24px;letter-spacing:-.8px;margin:7px 0}
+.agent-primer p{font-size:14px;line-height:1.6;color:#61766b;margin:0}
+.agent-primer-steps{display:grid;gap:8px}
+.agent-primer-steps span{border:1px solid #e4ebdd;background:#fff;border-radius:9px;padding:10px 12px;color:#315145;font-size:13px;font-weight:700}
+.agent-primer>small{grid-column:1/-1;color:#73887a;font-size:12px;line-height:1.5}
+.share-strip{display:flex;justify-content:space-between;align-items:center;gap:18px;background:#fff6ea;border-color:#f1dfc7}
+.share-strip>div{display:flex;flex-direction:column;gap:5px}
+.share-strip strong{font-size:16px}.share-strip span{font-size:13px;color:#6c776d}
+.share-strip button{border:0;border-radius:10px;background:#244b3f;color:#fff;padding:12px 15px;font-weight:800;white-space:nowrap}
+.share-strip button:hover{background:#346b56}
+.limit-section{padding-top:68px;padding-bottom:68px}
+.limit-section{display:block}.limit-card{min-height:0;padding:32px 38px}.limit-card h2{font-size:clamp(28px,3vw,38px);margin:10px 0}.limit-card p{max-width:850px;font-size:14px;margin:0}.limit-card a{margin-top:12px}
+button:focus-visible,a:focus-visible{outline:3px solid #df995f;outline-offset:3px}
+@media(max-width:760px){.hero{padding-top:28px;padding-bottom:42px;gap:28px}.handoff-card{padding:22px}.workspace-section{padding-top:45px}.agent-primer{grid-template-columns:1fr}.share-strip{align-items:flex-start;flex-direction:column}}
+@media(max-width:460px){.hero h1{font-size:47px}.hero-copy>p{font-size:15px}.hero-actions{flex-direction:column}.hero-actions .button{width:100%}.handoff-card{padding:19px}.handoff-row strong{font-size:14px}.handoff-row small{font-size:12px}.workspace-intro h2{font-size:36px}.tab{font-size:12px}.panel-main{padding:22px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
