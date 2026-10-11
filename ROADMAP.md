@@ -13,6 +13,19 @@ payments, private evidence, or production-grade guarantee. Read the
 V3 evidence is in [its separate test record](deployments/studionet_packages_v3.json).
 V4 evidence is in [its separate test record](deployments/studionet_packages_v4.json).
 
+## Shipped to the public StudioNet pilot: V5 Provider Passport
+
+Implementation adds a wallet-owned provider profile and an append-only receipt
+index populated by V5's `on="finalized"` callback for terminal validator
+decisions. MCP tools and a read-only `/passport` page plus `/api/passport`
+lookup are live. The full V5-to-Passport finalized callback was exercised on
+Studionet, and its receipt was verified through the production HTTP endpoint
+and Python agent client. The browser job workflow and hosted lifecycle API
+remain on V4; agents use the V5 MCP tools for new V5 jobs. Do not label
+existing V1-V4 outcomes as Passport receipts and do not add an aggregate
+reputation score. Canonical deployment addresses and evidence are in
+`deployments/studionet_packages_v5.json`.
+
 ## Built in v2: evidence packages for agent work
 
 V1 assesses one UTF-8 file of at most 4,800 bytes. V2 supports a canonical

@@ -14,6 +14,10 @@ export function GET(request: Request) {
     },
     servers: [{ url: origin }],
     paths: {
+      "/api/passport": { get: { summary: "Read a public Provider Passport profile and latest finalized V5 consensus receipts", parameters: [
+        { name: "wallet", in: "query", required: true, schema: { type: "string", pattern: "^0x[0-9a-fA-F]{40}$" } },
+        { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 10, default: 5 } },
+      ], responses: { "200": { description: "Wallet profile and newest receipts; profile claims are self-reported" }, "400": { description: "Invalid wallet or limit" }, "503": { description: "Passport contract is not configured or Studionet is unavailable" } } } },
       "/api/health": { get: { summary: "Check live contract reads", responses: { "200": { description: "Contract reachable" }, "503": { description: "Studionet unavailable" } } } },
       "/api/jobs": { get: { summary: "List up to five newest finalized jobs", parameters: [{ name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 5, default: 5 } }], responses: { "200": { description: "Job list", content: { "application/json": { schema: { type: "object", properties: { total: { type: "integer" }, jobs: { type: "array", items: job } } } } } }, "400": { description: "Invalid limit", content: { "application/json": { schema: error } } } } } },
       "/api/jobs/{id}": { get: { summary: "Read a finalized job", parameters: [{ name: "id", in: "path", required: true, schema: { type: "string", pattern: "^[A-Za-z0-9_-]{8,64}$" } }], responses: { "200": { description: "Job state", content: { "application/json": { schema: job } } }, "400": { description: "Invalid job ID" }, "404": { description: "Job not found" }, "503": { description: "Chain read failed" } } } },

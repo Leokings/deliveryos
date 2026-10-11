@@ -25,10 +25,14 @@ _write_lock = threading.RLock()
 
 
 class DeliveryOSClient:
-    def __init__(self, contract_address: str, private_key: str | None = None, client=None):
+    def __init__(self, contract_address: str, private_key: str | None = None, client=None,
+                 passport_contract_address: str | None = None):
         if not _ADDRESS.fullmatch(contract_address):
             raise ValueError("Contract address must be a 0x-prefixed 20-byte address")
+        if passport_contract_address is not None and not _ADDRESS.fullmatch(passport_contract_address):
+            raise ValueError("Passport contract address must be a 0x-prefixed 20-byte address")
         self.contract_address = contract_address
+        self.passport_contract_address = passport_contract_address
         self.account = None
         if private_key:
             if not re.fullmatch(r"(?:0x)?[0-9a-fA-F]{64}", private_key):
@@ -44,7 +48,8 @@ class DeliveryOSClient:
     def from_env(cls):
         address = os.environ.get("DELIVERYOS_CONTRACT_ADDRESS", "")
         key = os.environ.get("DELIVERYOS_PRIVATE_KEY")
-        return cls(address, key)
+        passport = os.environ.get("DELIVERYOS_PASSPORT_ADDRESS")
+        return cls(address, key, passport_contract_address=passport)
 
     @property
     def wallet_address(self) -> str | None:
@@ -66,6 +71,68 @@ class DeliveryOSClient:
         # Never re-submit automatically after a timeout. Poll this hash or read job state.
         return {"transaction_hash": str(tx_hash), "status": "SUBMITTED_TO_NETWORK",
                 "contract_address": self.contract_address, "method": name}
+
+    def _passport_read(self, name: str, args: list):
+        if not self.passport_contract_address:
+            raise RuntimeError("Set DELIVERYOS_PASSPORT_ADDRESS to use Provider Passport tools")
+        return self.client.read_contract(
+            self.passport_contract_address, name, args=args,
+            transaction_hash_variant=TransactionHashVariant.LATEST_FINAL,
+        )
+
+    def _passport_write(self, name: str, args: list) -> dict:
+        if not self.passport_contract_address:
+            raise RuntimeError("Set DELIVERYOS_PASSPORT_ADDRESS to use Provider Passport tools")
+        if self.account is None:
+            raise RuntimeError("Profile writes need DELIVERYOS_PRIVATE_KEY in the agent's own environment")
+        with _write_lock:
+            tx_hash = self.client.write_contract(
+                self.passport_contract_address, name, account=self.account, args=args
+            )
+        return {"transaction_hash": str(tx_hash), "status": "SUBMITTED_TO_NETWORK",
+                "contract_address": self.passport_contract_address, "method": name}
+
+    def passport_identity(self) -> dict:
+        if not self.passport_contract_address:
+            raise RuntimeError("Set DELIVERYOS_PASSPORT_ADDRESS to use Provider Passport tools")
+        return {
+            "network": "studionet", "chain_id": 61999,
+            "passport_contract_address": self.passport_contract_address,
+            "source_contract_address": self._passport_read("get_source_contract", []),
+            "owner_address": self._passport_read("get_owner", []),
+        }
+
+    def get_provider_profile(self, wallet_address: str) -> dict:
+        if not _ADDRESS.fullmatch(wallet_address):
+            raise ValueError("Wallet address must be a 0x-prefixed 20-byte address")
+        return self._passport_read("get_provider_profile", [wallet_address])
+
+    def get_provider_receipt_count(self, wallet_address: str) -> int:
+        if not _ADDRESS.fullmatch(wallet_address):
+            raise ValueError("Wallet address must be a 0x-prefixed 20-byte address")
+        return int(self._passport_read("get_provider_receipt_count", [wallet_address]))
+
+    def get_provider_receipt(self, wallet_address: str, index: int) -> dict:
+        if not _ADDRESS.fullmatch(wallet_address):
+            raise ValueError("Wallet address must be a 0x-prefixed 20-byte address")
+        if type(index) is not int or index < 0:
+            raise ValueError("Receipt index must be a non-negative integer")
+        return self._passport_read("get_provider_receipt", [wallet_address, index])
+
+    def get_receipt_by_id(self, receipt_id: str) -> dict:
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", receipt_id):
+            raise ValueError("Receipt ID must be a 32-byte hexadecimal hash")
+        return self._passport_read("get_receipt_by_id", [receipt_id])
+
+    def set_my_provider_profile(self, display_name: str, bio: str,
+                                 capabilities: list[str]) -> dict:
+        if self.account is None:
+            raise RuntimeError("Profile writes need DELIVERYOS_PRIVATE_KEY in the agent's own environment")
+        if not isinstance(capabilities, list) or any(not isinstance(tag, str) for tag in capabilities):
+            raise ValueError("Capabilities must be a list of text tags")
+        return self._passport_write("set_my_profile", [
+            display_name, bio, json.dumps(capabilities, separators=(",", ":")),
+        ])
 
     def get_job(self, job_id: str) -> dict:
         return self._read("get_job", [job_id])
@@ -100,9 +167,11 @@ class DeliveryOSClient:
             actions = ["deliveryos_submit_delivery"]
         elif status == "SUBMITTED":
             package_protocol = job.get("protocol")
-            can_correct = package_protocol in ("DELIVERYOS_PACKAGES_V3", "DELIVERYOS_PACKAGES_V4")
+            can_correct = package_protocol in (
+                "DELIVERYOS_PACKAGES_V3", "DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5",
+            )
             before_cutoff = time.time() <= int(job.get("review_deadline_epoch", 0))
-            if package_protocol == "DELIVERYOS_PACKAGES_V4" and not before_cutoff:
+            if package_protocol in ("DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5") and not before_cutoff:
                 if wallet:
                     actions = ["deliveryos_close_unreviewed"]
             elif role == "buyer":
@@ -113,7 +182,8 @@ class DeliveryOSClient:
                     actions.insert(0, "deliveryos_submit_delivery")
             if package_protocol == "DELIVERYOS_PACKAGES_V3" and not before_cutoff and wallet:
                 actions.append("deliveryos_close_unreviewed")
-        protocol = ("v4" if job.get("protocol") == "DELIVERYOS_PACKAGES_V4" else
+        protocol = ("v5" if job.get("protocol") == "DELIVERYOS_PACKAGES_V5" else
+                    "v4" if job.get("protocol") == "DELIVERYOS_PACKAGES_V4" else
                     "v3" if job.get("protocol") == "DELIVERYOS_PACKAGES_V3" else
                     "v2" if job.get("protocol") == "DELIVERYOS_PACKAGES_V2" else "v1")
         return {
@@ -122,14 +192,20 @@ class DeliveryOSClient:
             "role": role,
             "wallet_address": self.wallet_address,
             "possible_tools": actions,
-            "job_url_path": f"/?version={protocol}&job={job_id}",
-            "next_step": ("The v4 decision cutoff has passed. Anyone with a wallet may close this "
+            "job_url_path": None if protocol == "v5" else f"/?version={protocol}&job={job_id}",
+            "browser_ui_note": ("V5 is available through MCP. The hosted browser workspace has not yet been wired to V5."
+                                if protocol == "v5" else None),
+            "next_step": ("The v4/v5 decision cutoff has passed. Anyone with a wallet may close this "
                           "unreviewed submission as inconclusive; approval and review can no longer succeed."
-                          if protocol == "v4" and actions == ["deliveryos_close_unreviewed"] else
-                          "Choose a possible tool. For v3/v4 acceptance/review, pass the inspected "
+                          if protocol in ("v4", "v5") and actions == ["deliveryos_close_unreviewed"] else
+                          "Use the DeliveryOS V5 MCP tools. For acceptance/review, pass the inspected "
+                          "current_version; verified Passport receipts appear only after terminal validator "
+                          "decisions finalize."
+                          if protocol == "v5" and actions else
+                          "Choose a possible tool. For v3/v4/v5 acceptance/review, pass the inspected "
                           "current_version as expected_version. Then check the transaction hash "
                           "until finalized_success is true and read the job again."
-                          if protocol in ("v3", "v4") and actions else
+                          if protocol in ("v3", "v4", "v5") and actions else
                           "Choose a possible tool, then check its transaction hash until "
                           "finalized_success is true and read the job again."
                           if actions else "No role-specific write is currently suggested. "
@@ -244,14 +320,19 @@ class DeliveryOSClient:
 
     def submit_delivery(self, job_id: str, evidence_url: str) -> dict:
         job = self.get_job(job_id)
-        supports_correction = job.get("protocol") in ("DELIVERYOS_PACKAGES_V3", "DELIVERYOS_PACKAGES_V4")
+        supports_correction = job.get("protocol") in (
+            "DELIVERYOS_PACKAGES_V3", "DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5",
+        )
         if job["status"] not in (("ACTIVE", "REVISION", "SUBMITTED") if supports_correction else ("ACTIVE", "REVISION")):
             raise ValueError("Job is not awaiting a delivery")
         if supports_correction and job["status"] == "SUBMITTED" and time.time() > int(job.get("review_deadline_epoch", 0)):
             raise ValueError("Correction window passed")
         if not evidence_url.startswith(job["evidence_prefix"]):
             raise ValueError("Evidence URL is outside the agreed source prefix")
-        if job.get("protocol") in ("DELIVERYOS_PACKAGES_V2", "DELIVERYOS_PACKAGES_V3", "DELIVERYOS_PACKAGES_V4"):
+        if job.get("protocol") in (
+            "DELIVERYOS_PACKAGES_V2", "DELIVERYOS_PACKAGES_V3",
+            "DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5",
+        ):
             from .packages import verify_public_package
             previous_fingerprint = job.get("last_reviewed_fingerprint") if supports_correction else None
             if not supports_correction and job["status"] == "REVISION":
@@ -274,17 +355,19 @@ class DeliveryOSClient:
     def _decision_args(self, job_id: str, expected_version: int | None) -> list:
         job = self.get_job(job_id)
         protocol = job.get("protocol")
-        if protocol in ("DELIVERYOS_PACKAGES_V3", "DELIVERYOS_PACKAGES_V4"):
+        if protocol in (
+            "DELIVERYOS_PACKAGES_V3", "DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5",
+        ):
             if type(expected_version) is not int or expected_version < 1:
-                raise ValueError("V3/V4 decisions require the inspected expected_version")
+                raise ValueError("V3/V4/V5 decisions require the inspected expected_version")
             if expected_version != int(job["current_version"]):
                 raise ValueError("Pending version changed; inspect the latest evidence")
-            if (protocol == "DELIVERYOS_PACKAGES_V4" and
+            if (protocol in ("DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5") and
                     time.time() > int(job.get("review_deadline_epoch", 0))):
                 raise ValueError("Review cutoff passed; close the unreviewed submission")
             return [job_id, expected_version]
         if expected_version is not None:
-            raise ValueError("Expected version is supported only by the v3/v4 contracts")
+            raise ValueError("Expected version is supported only by the v3/v4/v5 contracts")
         return [job_id]
 
     def accept_delivery(self, job_id: str, expected_version: int | None = None) -> dict:

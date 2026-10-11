@@ -14,6 +14,10 @@ export function GET(request: Request) {
     },
     servers: [{ url: origin }],
     paths: {
+      "/api/passport": { get: { summary: "Read a public Provider Passport profile and latest finalized V5 consensus receipts", parameters: [
+        { name: "wallet", in: "query", required: true, schema: { type: "string", pattern: "^0x[0-9a-fA-F]{40}$" } },
+        { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 10, default: 5 } },
+      ], responses: { "200": { description: "Wallet profile and newest receipts; profile claims are self-reported" }, "400": { description: "Invalid wallet or limit" }, "503": { description: "Passport contract is not configured or Studionet is unavailable" } } } },
       "/api/v4/health": { get: { summary: "Read live v4 contract health and job count",
         responses: { "200": { description: "Contract reachable" }, "503": { description: "Studionet unavailable" } } } },
       "/api/v4/jobs": { get: { summary: "List newest finalized v4 jobs",

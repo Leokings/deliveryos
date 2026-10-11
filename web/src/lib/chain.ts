@@ -42,6 +42,34 @@ export async function readJobId(index: number, address: `0x${string}` = CONTRACT
   }) as string;
 }
 
+/** The Provider Passport is a separately deployed V5 companion contract. */
+export function getPassportContractAddress(): `0x${string}` | null {
+  const address = process.env.DELIVERYOS_PASSPORT_ADDRESS;
+  if (!address) return null;
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+    throw new Error("DELIVERYOS_PASSPORT_ADDRESS must be a 20-byte contract address");
+  }
+  return address as `0x${string}`;
+}
+
+export async function readProviderProfile(wallet: `0x${string}`, passport: `0x${string}`) {
+  return await client.readContract({
+    address: passport,
+    functionName: "get_provider_profile",
+    args: [wallet],
+    transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
+  });
+}
+
+export async function readProviderReceipt(wallet: `0x${string}`, index: number, passport: `0x${string}`) {
+  return await client.readContract({
+    address: passport,
+    functionName: "get_provider_receipt",
+    args: [wallet, index],
+    transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
+  });
+}
+
 export async function readTransaction(hash: TransactionHash) {
   const tx = await client.getTransaction({ hash });
   // The stable SDK exposes the raw Studionet receipt as well as decoded fields.

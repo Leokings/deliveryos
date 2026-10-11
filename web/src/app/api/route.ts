@@ -15,6 +15,7 @@ export function GET() {
       submission: "/api/jobs/{job_id}/submissions/{version}",
       transaction: "/api/transactions/{transaction_hash}",
       evidence: "/api/evidence?url={commit_pinned_raw_github_url}",
+      provider_passport: "/api/passport?wallet={wallet_address}&limit=5",
       openapi: "/api/openapi",
     },
   });

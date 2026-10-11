@@ -1,8 +1,10 @@
 """DeliveryOS MCP tools for existing buyer/provider agents.
 
 Run with: mcp run deliveryos_agent/mcp_server.py
-Set DELIVERYOS_CONTRACT_ADDRESS to the v1, v2, v3 or v4 deployment and, for
-writes, DELIVERYOS_PRIVATE_KEY. V2/v3/v4 jobs use public package manifests.
+Set DELIVERYOS_CONTRACT_ADDRESS to the v1-v5 deployment and, for Provider
+Passport tools, DELIVERYOS_PASSPORT_ADDRESS. For signed writes, also set
+DELIVERYOS_PRIVATE_KEY in the trusted local agent host. V2-v5 jobs use public
+package manifests.
 """
 
 import hashlib
@@ -26,8 +28,46 @@ def deliveryos_identity() -> dict:
     service = _service()
     return {"network": "studionet", "chain_id": 61999,
             "contract_address": service.contract_address,
+            "passport_contract_address": getattr(service, "passport_contract_address", None),
             "wallet_address": service.wallet_address,
             "can_write": service.wallet_address is not None}
+
+
+@mcp.tool()
+def deliveryos_passport_identity() -> dict:
+    """Read the configured Provider Passport and its one-time V5 source binding."""
+    return _service().passport_identity()
+
+
+@mcp.tool()
+def deliveryos_get_provider_profile(wallet_address: str) -> dict:
+    """Read a public wallet profile; capability tags are self-reported, not verified."""
+    return _service().get_provider_profile(wallet_address)
+
+
+@mcp.tool()
+def deliveryos_get_provider_receipt_count(wallet_address: str) -> int:
+    """Count finalized V5 validator-outcome receipts for a provider wallet."""
+    return _service().get_provider_receipt_count(wallet_address)
+
+
+@mcp.tool()
+def deliveryos_get_provider_receipt(wallet_address: str, index: int) -> dict:
+    """Read one immutable finalized V5 consensus-outcome receipt by provider and index."""
+    return _service().get_provider_receipt(wallet_address, index)
+
+
+@mcp.tool()
+def deliveryos_get_receipt_by_id(receipt_id: str) -> dict:
+    """Read a Passport receipt using its content-derived 32-byte receipt ID."""
+    return _service().get_receipt_by_id(receipt_id)
+
+
+@mcp.tool()
+def deliveryos_set_my_provider_profile(display_name: str, bio: str,
+                                       capabilities: list[str]) -> dict:
+    """Sign a public profile update with this agent's own wallet; no other wallet can be edited."""
+    return _service().set_my_provider_profile(display_name, bio, capabilities)
 
 
 @mcp.tool()
@@ -94,14 +134,14 @@ def deliveryos_cancel_proposal(job_id: str) -> dict:
 
 @mcp.tool()
 def deliveryos_submit_delivery(job_id: str, evidence_url: str) -> dict:
-    """Provider: preflight and submit evidence; v3/v4 can correct a pending package."""
+    """Provider: preflight and submit evidence; v3-v5 can correct a pending package."""
     return _service().submit_delivery(job_id, evidence_url)
 
 
 @mcp.tool()
 def deliveryos_build_package_manifest(evidence_prefix: str, source_commit: str,
                                       files: list[dict], criterion_count: int) -> dict:
-    """Prepare exact v2/v3/v4 manifest bytes after committing 1-6 public source files.
+    """Prepare exact v2-v5 manifest bytes after committing 1-6 public source files.
 
     Each file requires path, UTF-8 content, media_type, and zero-based criteria.
     Save manifest_text exactly (with its final newline), commit it separately,
@@ -123,7 +163,7 @@ def deliveryos_build_package_manifest(evidence_prefix: str, source_commit: str,
 @mcp.tool()
 def deliveryos_verify_package(manifest_url: str, evidence_prefix: str,
                               criterion_count: int) -> dict:
-    """Preflight a public v2/v3/v4 manifest and every referenced file, without signing."""
+    """Preflight a public v2-v5 manifest and every referenced file, without signing."""
     return verify_public_package(manifest_url, evidence_prefix, criterion_count)
 
 

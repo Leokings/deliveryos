@@ -13,7 +13,26 @@ def anyio_backend():
 async def test_mcp_exposes_read_and_signed_write_tools(monkeypatch):
     class FakeService:
         contract_address = "0x" + "a" * 40
+        passport_contract_address = "0x" + "e" * 40
         wallet_address = "0x" + "b" * 40
+
+        def passport_identity(self):
+            return {"passport_contract_address": self.passport_contract_address}
+
+        def get_provider_profile(self, wallet_address):
+            return {"wallet": wallet_address, "profile_claims": "SELF_REPORTED_NOT_VALIDATED"}
+
+        def get_provider_receipt_count(self, wallet_address):
+            return 1
+
+        def get_provider_receipt(self, wallet_address, index):
+            return {"receipt_id": "f" * 64, "index": index}
+
+        def get_receipt_by_id(self, receipt_id):
+            return {"receipt_id": receipt_id}
+
+        def set_my_provider_profile(self, display_name, bio, capabilities):
+            return {"transaction_hash": "0x" + "c" * 64, "method": "set_my_profile"}
 
         def get_job(self, job_id):
             return {"job_id": job_id, "status": "SUBMITTED"}
@@ -39,7 +58,38 @@ async def test_mcp_exposes_read_and_signed_write_tools(monkeypatch):
                 "deliveryos_submit_delivery", "deliveryos_evaluate_delivery",
                 "deliveryos_transaction_status", "deliveryos_get_job_count",
                 "deliveryos_get_job_id", "deliveryos_build_package_manifest",
-                "deliveryos_verify_package"} <= names
+                "deliveryos_verify_package", "deliveryos_passport_identity",
+                "deliveryos_get_provider_profile", "deliveryos_get_provider_receipt_count",
+                "deliveryos_get_provider_receipt", "deliveryos_get_receipt_by_id",
+                "deliveryos_set_my_provider_profile"} <= names
+
+        passport = await client.call_tool("deliveryos_get_provider_profile", {
+            "wallet_address": "0x" + "b" * 40,
+        })
+        assert passport.is_error is False
+        assert "SELF_REPORTED_NOT_VALIDATED" in passport.content[0].text
+
+        passport_identity = await client.call_tool("deliveryos_passport_identity", {})
+        assert passport_identity.is_error is False
+        assert "passport_contract_address" in passport_identity.content[0].text
+        receipt_count = await client.call_tool("deliveryos_get_provider_receipt_count", {
+            "wallet_address": "0x" + "b" * 40,
+        })
+        assert receipt_count.is_error is False and "1" in receipt_count.content[0].text
+        receipt = await client.call_tool("deliveryos_get_provider_receipt", {
+            "wallet_address": "0x" + "b" * 40, "index": 0,
+        })
+        assert receipt.is_error is False and "receipt_id" in receipt.content[0].text
+        receipt_by_id = await client.call_tool("deliveryos_get_receipt_by_id", {
+            "receipt_id": "f" * 64,
+        })
+        assert receipt_by_id.is_error is False and "receipt_id" in receipt_by_id.content[0].text
+
+        profile_write = await client.call_tool("deliveryos_set_my_provider_profile", {
+            "display_name": "Builder", "bio": "", "capabilities": ["research"],
+        })
+        assert profile_write.is_error is False
+        assert "set_my_profile" in profile_write.content[0].text
 
         job = await client.call_tool("deliveryos_get_job", {"job_id": "job_12345"})
         assert job.is_error is False

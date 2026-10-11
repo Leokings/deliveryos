@@ -1,0 +1,56 @@
+{
+  "network": "studionet",
+  "chain_id": 61999,
+  "protocol": "DELIVERYOS_PACKAGES_V5",
+  "contract_address": "0xde76b4a05B28Aa6fee5250C87aAefACee1cf1A9E",
+  "source_sha256_lf": "d8763f84a3f447db493348cf3a3c44bd476551fc3b3efa3d586d84e8de3a487f",
+  "deploy_transaction": "0x5c1a73c818aa5bab009b75184840ad4e92c2807117e8aa9333cc70ca8f662223",
+  "provider_passport": {
+    "contract_address": "0x238df7427B425347648fDA8A62aff6FB3f4871e4",
+    "source_sha256_lf": "11c877505cd2630566bb75fc3605ee402d81c62f9e0a727a61b7be4a78c0f826",
+    "deploy_transaction": "0x68455168d6c4ca294d6b6f00a862c71ef0e5b5e874ea4e323cceeb4673cb5849",
+    "owner_address": "0x797d3b25fb2cca0ff93f60df1910267f3822d655",
+    "bound_source_contract": "0xde76b4a05B28Aa6fee5250C87aAefACee1cf1A9E"
+  },
+  "end_to_end_test": {
+    "job_id": "passport_smoke_20261011_1da24ad9",
+    "provider_address": "0xa7D72Fbbe2B148187512A0534Aef62A11f92faFE",
+    "provider_profile": "temporary smoke-test profile; self-reported",
+    "expected_status": "ACCEPTED",
+    "decision_source": "CONSENSUS",
+    "criterion_statuses": ["MET", "MET"],
+    "passport_receipt_id": "4117ee65032fb4456f31f27ebd8b7b169dd09fc156d64271a4d623908d7782a0",
+    "evidence_fingerprint": "d5f1feb0b21032dc1ac85985cddfad7ace6a3c178b29840f1993e3c1292f0059",
+    "transactions": {
+      "provider_profile": "0xbcc92b7d23ced6a1ce656b1c47993f891043db0be5569b997b31cdf25487d2e4",
+      "create_job": "0xe516065624ce6c370dd96d9fa1d0ba55b2abe982ce149a6ec76f0e07f38acd59",
+      "accept_job": "0xc5125632b1d5e8d4c6ea13a53efae99fefa8df3fb126ba20803e4fb7e4d9c64a",
+      "submit_delivery": "0x01560252aec464ac6368e261ff298a63b535a741f164bae5014cc398a73dab91",
+      "evaluate_delivery": "0xe0979863b2b9d9587fda599979546dea47d79bb20942d228332306a93d51476c"
+    }
+  },
+  "vercel": {
+    "production_url": "https://deliveryos-tau-wheat.vercel.app/",
+    "deployment_id": "dpl_123zJmUNXxHK9Qmk5Kh142JGrFLF",
+    "passport_page": "/passport",
+    "passport_api": "/api/passport?wallet=<wallet-address>"
+  },
+  "superseded_deployments": {
+    "unused_passport": {
+      "contract_address": "0xef24d34885Ed5936fa16C317CCBB4EFBeA94BA03",
+      "deploy_transaction": "0xf5c8bc6381775bb41b0872cdd212293ccbcbbc38338508a8e6392761c07c4027",
+      "note": "Unbound; not configured in Vercel or the agent setup."
+    },
+    "unused_v5": {
+      "contract_address": "0x72b608f727FA12469b8141a4C4577cA2560f4a91",
+      "deploy_transaction": "0x106bc00761f7fba20d65a3f79a4fd3e8116ca5d3db0b755adc9860f1bb15baa8",
+      "note": "Points to the unused Passport above; not configured in Vercel or the agent setup."
+    },
+    "failed_v5_attempt": {
+      "address_without_code": "0xE57f7e88A48B502c83A2493667cfc23d6aed4dC3",
+      "transaction": "0xf0c49dabc47c8fe53485b4cdc94753e40cb9bc99632a31f7354bf9d4a26be423",
+      "execution_error": "TypeError: cannot convert 'Address' object to bytes"
+    },
+    "note": "Only the canonical addresses at the top of this manifest are active. The exploratory deployments were left unused rather than referenced by the app."
+  }
+}

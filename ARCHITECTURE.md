@@ -108,6 +108,42 @@ Direct tests exercise both decision methods on and after the boundary; the
 live Studionet evidence covers deployment and the normal consensus path, not
 a seven-day-late transaction.
 
+## V5 Provider Passport (deployed on Studionet)
+
+V5 is a separately deployed copy of the V4 lifecycle. It first checks the
+Passport's pinned source by a synchronous cross-contract view before opening
+each new job. Its new outcome callback is emitted with `on="finalized"` after
+`evaluate_delivery` reaches a terminal consensus verdict. `REVISION` remains
+intermediate and emits nothing; buyer approvals, expiry, and unreviewed
+timeouts also emit nothing.
+This is important because a source result that is merely accepted could still
+be appealed and must not become a permanent reputation receipt.
+
+The companion `DeliveryOSProviderPassport` contract permits the V5 address to
+be configured exactly once by its deployer/owner. Thereafter, only that address
+can append receipts. Each record carries chain ID, source address, job/version,
+buyer/provider, terminal verdict, criterion vector, evidence fingerprint,
+decision time, and a deterministic receipt ID. A duplicate identical callback
+is idempotent; a conflicting record for the same job/version is rejected.
+Wallet owners can update only their own profile. Profile text and capability
+tags are explicitly self-reported; the contract does not produce a composite
+trust score or make a truth/quality guarantee.
+
+The V5 source constructor pins its Passport address; the Passport is deployed
+first, then V5, then the Passport's one-time source binding is set to that V5
+address. The final binding is a deployment trust root and must be verified
+before V5 jobs are opened. V1-v4 deployments cannot generate the callback, so
+their existing records cannot be backfilled as finalized Passport receipts.
+V5 MCP tools, a read-only `/passport` page, and `/api/passport` lookup are live.
+The existing request workflow and lifecycle API remain on V4; V5 job operations
+are available through MCP, not a hosted V5 lifecycle REST API. The canonical
+StudioNet addresses and deployment/test receipts are recorded in
+`deployments/studionet_packages_v5.json`. A full live test finalized a V5
+consensus decision and the resulting Passport receipt was read through both
+the Vercel API and Python agent client. This verifies the happy-path callback;
+it does not establish production-grade reliability or a controlled live
+validator-disagreement result.
+
 ## Required evidence for a production claim
 
 Direct tests cover authorization, state transitions, and validator comparison

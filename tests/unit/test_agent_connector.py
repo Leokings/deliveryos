@@ -6,6 +6,7 @@ from deliveryos_agent.client import DeliveryOSClient
 
 
 ADDRESS = "0x" + "a" * 40
+PASSPORT = "0x" + "d" * 40
 PREFIX = (
     "https://raw.githubusercontent.com/Leokings/digital-deliverable-verifier/"
     "c58779c534ddae9f127bffc2e06584b6f56a9f9a/tests/fixtures/"
@@ -18,6 +19,21 @@ class FakeSDK:
         self.writes = []
 
     def read_contract(self, address, name, args, transaction_hash_variant):
+        if address == PASSPORT:
+            if name == "get_owner":
+                return "0x" + "b" * 40
+            if name == "get_source_contract":
+                return "0x" + "c" * 40
+            if name == "get_provider_profile":
+                return {"wallet": args[0], "registered": True,
+                        "profile_claims": "SELF_REPORTED_NOT_VALIDATED", "receipt_count": 1}
+            if name == "get_provider_receipt_count":
+                return 1
+            if name == "get_provider_receipt":
+                return {"receipt_id": "f" * 64, "verdict": "ACCEPTED", "version": args[1]}
+            if name == "get_receipt_by_id":
+                return {"receipt_id": args[0], "verdict": "ACCEPTED"}
+            raise AssertionError(name)
         assert address == ADDRESS
         if name == "get_job":
             return {"status": "ACTIVE", "evidence_prefix": PREFIX}
@@ -163,6 +179,24 @@ def test_v4_agent_can_review_current_version_before_cutoff(monkeypatch):
     assert sdk.writes[0][3] == ["job_12345", 2]
 
 
+def test_v5_agent_uses_hard_cutoff_and_version_bound_decisions(monkeypatch):
+    monkeypatch.setattr("deliveryos_agent.client.time.time", lambda: 100)
+    sdk = FakeSDK()
+    service = DeliveryOSClient(ADDRESS, client=sdk)
+    service.account = SimpleNamespace(address="0x" + "c" * 40)
+    service.get_job = lambda _: {
+        "status": "SUBMITTED", "buyer": "0x" + "b" * 40,
+        "provider": "0x" + "c" * 40, "protocol": "DELIVERYOS_PACKAGES_V5",
+        "current_version": 2, "review_deadline_epoch": 100,
+    }
+    result = service.next_actions("job_12345")
+    assert result["job_url_path"] is None
+    assert "not yet been wired" in result["browser_ui_note"]
+    assert result["possible_tools"] == ["deliveryos_submit_delivery", "deliveryos_evaluate_delivery"]
+    service.evaluate_delivery("job_12345", 2)
+    assert sdk.writes[0][3] == ["job_12345", 2]
+
+
 def test_evidence_source_and_digest_bound_to_write(monkeypatch):
     sdk = FakeSDK()
     service = DeliveryOSClient(ADDRESS, client=sdk)
@@ -213,3 +247,31 @@ def test_finalization_checks_execution_not_just_consensus():
         "consensus_data": {"leader_receipt": [{"execution_result": "SUCCESS"}]},
     }
     assert service.transaction_status("0x" + "b" * 64)["finalized_success"] is False
+
+
+def test_provider_passport_reads_and_own_wallet_profile_write():
+    sdk = FakeSDK()
+    service = DeliveryOSClient(ADDRESS, client=sdk, passport_contract_address=PASSPORT)
+    service.account = SimpleNamespace(address="0x" + "b" * 40)
+    profile = service.get_provider_profile("0x" + "c" * 40)
+    assert profile["profile_claims"] == "SELF_REPORTED_NOT_VALIDATED"
+    assert service.get_provider_receipt_count("0x" + "c" * 40) == 1
+    assert service.get_provider_receipt("0x" + "c" * 40, 0)["verdict"] == "ACCEPTED"
+    assert service.get_receipt_by_id("f" * 64)["receipt_id"] == "f" * 64
+    identity = service.passport_identity()
+    assert identity["source_contract_address"] == "0x" + "c" * 40
+    result = service.set_my_provider_profile("Builder", "Public bio", ["research", "writing"])
+    assert result["contract_address"] == PASSPORT
+    assert sdk.writes[-1][1:] == (
+        "set_my_profile", "0x" + "b" * 40,
+        ["Builder", "Public bio", '["research","writing"]'],
+    )
+
+
+def test_provider_passport_fails_closed_when_not_configured_or_unsigned():
+    service = DeliveryOSClient(ADDRESS, client=FakeSDK())
+    with pytest.raises(RuntimeError, match="DELIVERYOS_PASSPORT_ADDRESS"):
+        service.get_provider_profile("0x" + "c" * 40)
+    service = DeliveryOSClient(ADDRESS, client=FakeSDK(), passport_contract_address=PASSPORT)
+    with pytest.raises(RuntimeError, match="DELIVERYOS_PRIVATE_KEY"):
+        service.set_my_provider_profile("Builder", "", [])

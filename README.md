@@ -3,11 +3,14 @@
 DeliveryOS is a tool that a buyer agent and a provider agent can call to agree
 on a digital deliverable, submit a version, and get a GenLayer-backed
 acceptance or revision decision. It is **not** an agent, marketplace, payment
-system, or escrow. The decision-only contracts are live on Studionet: v1
-assesses one text file; v2–v4 assess a package of 1–6 text files. V3 adds
+system, or escrow. The decision-only contracts live on Studionet: v1 assesses
+one text file; v2–v5 assess a package of 1–6 text files. V3 adds
 bounded correction and version-bound decisions; v4 makes the review cutoff a
-hard on-chain limit for approval and AI review. A browser
-workspace and read-only public API live in [`web/`](web/). This is a public
+hard on-chain limit for approval and AI review. V5 adds post-finality
+consensus receipts through the wallet-owned Provider Passport. The V5 and
+Passport contracts are deployed on Studionet and the Passport lookup is live
+on Vercel. The browser job workflow and hosted lifecycle API still use V4;
+V5 job actions are currently available through MCP. This is a public
 Studionet pilot, not a payments product.
 
 Live site: [deliveryos-tau-wheat.vercel.app](https://deliveryos-tau-wheat.vercel.app/).
@@ -84,7 +87,7 @@ and its deploy, correction, and review receipts are in
 The content hash proves which bytes were assessed, not that their factual
 claims are true or that external work happened.
 
-The v1 lifecycle is available to agents through MCP; v2/v3/v4 use the same signed
+The v1 lifecycle is available to agents through MCP; v2-v5 use the same signed
 methods plus the package tools described above:
 
 1. The buyer and provider each use their own GenLayer wallet. The buyer writes
@@ -116,6 +119,52 @@ v4, approval and validator review are blocked immediately after the cutoff,
 even before a close transaction. Older v3 jobs retain their softer rule: a
 late decision is possible until somebody closes them.
 
+## V5 Provider Passport (live on Studionet)
+
+V5 is a separate copy of the v4 lifecycle with a Passport-binding guard and one
+new integration: a buyer cannot open a V5 job until the Passport confirms this
+exact V5 address is its pinned source. After a terminal GenLayer validator
+decision is finalized, V5 queues a callback to the Provider Passport. Manual
+buyer approval, pending revisions, deadline expiry, and unreviewed closure do
+not create consensus-outcome receipts. The Passport
+accepts receipts only from its one-time configured V5 source, rejects
+self-dealing and duplicate/conflicting job-version records, and exposes the
+criterion vector, verdict, evidence fingerprint, source contract, and receipt
+ID. It deliberately publishes no aggregate trust score. Profile text and
+capability tags are wallet-controlled but **self-reported**, not verified.
+
+The Passport is an append-only evidence index, not proof that deliverable
+claims are true. It covers only jobs on the V5 deployment; it cannot
+retroactively observe finalization events from immutable v1-v4 contracts. The
+existing request workspace and hosted lifecycle API remain on v4. The
+read-only [`/passport`](https://deliveryos-tau-wheat.vercel.app/passport)
+page and `/api/passport?wallet=...` endpoint are live; the production endpoint
+reads the canonical Passport at `0x238df7427B425347648fDA8A62aff6FB3f4871e4`.
+The V5 registry is `0xde76b4a05B28Aa6fee5250C87aAefACee1cf1A9E`. Both
+addresses, source hashes, deployment transactions, and an end-to-end test are
+recorded in [`deployments/studionet_packages_v5.json`](deployments/studionet_packages_v5.json).
+
+Deployment order avoids circular constructor addresses:
+
+1. Deploy `DeliveryOSProviderPassport.py`.
+2. Deploy `DeliveryOSPackagesV5.py` with the Passport address as its constructor
+   argument.
+3. From the Passport owner's wallet, call `set_source_contract` once with the
+   deployed V5 address. V5 checks this binding on every new job and rejects
+   job creation until that write finalizes successfully.
+4. For V5 MCP jobs, configure `DELIVERYOS_CONTRACT_ADDRESS` to the V5 registry
+   and `DELIVERYOS_PASSPORT_ADDRESS` to the Passport on the trusted local MCP
+   host. Keep any signing key local; public Passport reads do not need a key.
+
+Direct tests cover Passport authorization, receipt shape, duplicate handling,
+and wallet-owned profile validation. The full live StudioNet smoke flow
+created a profile, created and accepted a V5 job, submitted the public pinned
+two-file package, and received a finalized `ACCEPTED` consensus receipt with
+both criteria `MET`. The receipt is queryable from the production Passport
+API. This is testnet evidence, not a production-grade guarantee. The V5
+browser job-creation flow and V5 hosted lifecycle REST endpoints remain future
+work; the current browser workspace still targets V4.
+
 ## Let an AI agent use it
 
 The hosted v1 API exposes finalized reads at `/api/health`, `/api/jobs`,
@@ -125,7 +174,9 @@ The hosted v1 API exposes finalized reads at `/api/health`, `/api/jobs`,
 `/api/v2/jobs/{id}/submissions/{version}`,
 `/api/v2/packages/preflight`, and `/api/v2/openapi`; transaction status is
 shared. V3 and v4 use matching `/api/v3/` and `/api/v4/` endpoints. V4 is the default at
-`/openapi.json`. These endpoints are public and
+`/openapi.json`. V5 job operations are available through the MCP tools, not a
+hosted V5 lifecycle API. The V5 Passport offers public read-only lookups at
+`/api/passport?wallet=0x...&limit=5` and `/passport`. These endpoints are public and
 read-only. A write still needs the buyer or provider's own wallet. There is no
 hosted custodial signer or API-key-only write pathway in any version.
 
@@ -144,17 +195,23 @@ open listings. The new `deliveryos_next_actions` MCP tool reads a job and
 suggests the tools available to the configured wallet without signing or
 submitting anything. The agent must still check the transaction hash for
 finality and execution success, then read the job again. Public API discovery
-is also available at `/openapi.json` and `/llms.txt`.
+is also available at `/openapi.json` and `/llms.txt`. Once its contract address
+is configured, Provider Passport profile and receipt reads are available at
+`/api/passport?wallet=0x...&limit=5` and the human-readable lookup at
+`/passport`. These reads need no API key. Agents can read and publish their own
+profile through the MCP tools after both V5 contracts are deployed.
 
 From this directory:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e .
-$env:DELIVERYOS_CONTRACT_ADDRESS = "0x4254924698AA7d4195BC2D734D3b767F6296Ff65"
+$env:DELIVERYOS_CONTRACT_ADDRESS = "0xde76b4a05B28Aa6fee5250C87aAefACee1cf1A9E"
+$env:DELIVERYOS_PASSPORT_ADDRESS = "0x238df7427B425347648fDA8A62aff6FB3f4871e4"
 # For legacy v3 packages, use 0x89fFB4Ced8C0befa594B470629b3b15827749DbF.
 # For legacy v2 packages, use 0x6AdA7535b224343D48175930bd4874201B3f8860.
 # For legacy v1, use 0xef13Bfe9A9B0b4cE7EB4AfC2d8EDd8A6c6D43e40.
+# For browser workflow or legacy jobs, use the version-specific deployment address instead.
 # For read-only tools, leave DELIVERYOS_PRIVATE_KEY unset.
 # For signed writes, set it only in a trusted local process environment.
 $env:DELIVERYOS_PRIVATE_KEY = "<your wallet's private key>"
@@ -182,6 +239,8 @@ genvm-lint check contracts/DeliveryOS.py --json
 genvm-lint check contracts/DeliveryOSPackages.py --json
 genvm-lint check contracts/DeliveryOSPackagesV3.py --json
 genvm-lint check contracts/DeliveryOSPackagesV4.py --json
+genvm-lint check contracts/DeliveryOSPackagesV5.py --json
+genvm-lint check contracts/DeliveryOSProviderPassport.py --json
 .\.venv\Scripts\python.exe -m pytest tests/direct tests/unit -v
 gltest tests/integration -v -s --network studionet
 .\.venv\Scripts\python.exe -m pytest tests/live/test_mcp_stdio_readonly.py tests/live/test_studionet_record.py -v
