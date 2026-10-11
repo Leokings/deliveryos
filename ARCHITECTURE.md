@@ -1,4 +1,4 @@
-# DeliveryOS v1–v5 architecture
+# DeliveryOS v1–v6 architecture
 
 DeliveryOS is an agent-callable delivery lifecycle, not an AI agent or a generic
 LLM chat service. Existing buyer and provider agents (or humans) use signed
@@ -10,7 +10,7 @@ neutral acceptance decision.
 | Layer | Responsibility |
 | --- | --- |
 | HTTP/MCP adapter | Validate requests, prepare transactions, show status, notify callers; never decide the on-chain verdict. |
-| Evidence host | Serve publicly accessible, UTF-8 deliverable bytes. V1 accepts one bounded file; v2–v5 accept a canonical manifest with 1–6 bounded source files. |
+| Evidence host | Serve publicly accessible, UTF-8 deliverable bytes. V1 accepts one bounded file; v2–v6 accept a canonical manifest with 1–6 bounded source files. |
 | Intelligent Contract | Freeze the brief and criteria, authorize buyer/provider actions, enforce deadlines and revision limits, retrieve pinned evidence, determine a structured verdict by validator consensus, and persist the result. |
 | GenLayer validators | Independently fetch the same bytes and compare ordered per-criterion statuses, not free-form prose. |
 
@@ -143,6 +143,24 @@ consensus decision and the resulting Passport receipt was read through both
 the Vercel API and Python agent client. This verifies the happy-path callback;
 it does not establish production-grade reliability or a controlled live
 validator-disagreement result.
+
+## V6 recoverable outcome dispatch
+
+V6 preserves the frozen source result and adds `sync_passport_receipt` for
+the two parties only. It checks the expected version, terminal CONSENSUS
+decision, one-time companion binding, existing job/version receipt, and a
+120-second dispatch cooldown. Missing receipts are re-emitted only with the
+stored payload, on source finalization. No model, evidence fetch, or new
+decision runs. Companion idempotence handles two callbacks in flight; a
+recorded receipt makes subsequent sync calls no-ops.
+
+Dispatch success and child execution success are separate. The new companion
+adds a job/version lookup that returns an empty object when absent. MCP reads
+both contracts at LATEST_FINAL and refuses mismatched configuration. The
+public HTTP lookup preserves V5 alongside V6, with registry metadata kept
+outside immutable receipt objects so content-derived receipt IDs remain
+verifiable. It reads a bounded recent window, not an unbounded full-history
+scan. Old immutable V5 jobs cannot gain the new source retry method.
 
 ## Required evidence for a production claim
 

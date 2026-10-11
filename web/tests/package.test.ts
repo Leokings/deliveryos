@@ -69,6 +69,20 @@ test("v2 preflight rejects an invalid JSON artifact", async () => {
   await assert.rejects(verifyPublicPackage(manifestUrl, prefix, 2), /JSON file is invalid/);
 });
 
+test("preflight rejects BOM-prefixed manifest JSON like the on-chain UTF-8 parser", async () => {
+  mockFetch({ [manifestUrl]: "\uFEFF" + manifest });
+  await assert.rejects(verifyPublicPackage(manifestUrl, prefix, 2), /JSON|canonical/);
+});
+
+test("preflight rejects BOM-prefixed JSON artifacts even with matching byte hashes", async () => {
+  const body = "\uFEFF" + facts;
+  const data = JSON.parse(manifest);
+  data.files[1].sha256 = createHash("sha256").update(body).digest("hex");
+  data.files[1].size_bytes = Buffer.byteLength(body);
+  mockFetch({ [manifestUrl]: canonical(data) + "\n", [factsUrl]: body });
+  await assert.rejects(verifyPublicPackage(manifestUrl, prefix, 2), /JSON file is invalid/);
+});
+
 test("v2 preflight accepts quoted CSV and rejects malformed or ragged CSV", async () => {
   const data = JSON.parse(manifest);
   data.files[1].media_type = "text/csv";

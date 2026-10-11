@@ -34,6 +34,12 @@ async def test_mcp_exposes_read_and_signed_write_tools(monkeypatch):
         def set_my_provider_profile(self, display_name, bio, capabilities):
             return {"transaction_hash": "0x" + "c" * 64, "method": "set_my_profile"}
 
+        def passport_receipt_status(self, job_id):
+            return {"job_id": job_id, "receipt_recorded": False, "read_finality": "LATEST_FINAL"}
+
+        def sync_passport_receipt(self, job_id, expected_version):
+            return {"method": "sync_passport_receipt", "expected_version": expected_version}
+
         def get_job(self, job_id):
             return {"job_id": job_id, "status": "SUBMITTED"}
 
@@ -62,10 +68,18 @@ async def test_mcp_exposes_read_and_signed_write_tools(monkeypatch):
                 "deliveryos_verify_package", "deliveryos_passport_identity",
                 "deliveryos_get_provider_profile", "deliveryos_get_provider_receipt_count",
                 "deliveryos_get_provider_receipt", "deliveryos_get_receipt_by_id",
-                "deliveryos_set_my_provider_profile"} <= names
-        assert "V3-V5 require current_version" in descriptions["deliveryos_accept_delivery"]
-        assert "V4/V5 enforce a hard review cutoff" in descriptions["deliveryos_evaluate_delivery"]
-        assert "V4/V5 block late decisions" in descriptions["deliveryos_close_unreviewed"]
+                "deliveryos_set_my_provider_profile", "deliveryos_passport_receipt_status",
+                "deliveryos_sync_passport_receipt"} <= names
+        assert "V3-V6 require current_version" in descriptions["deliveryos_accept_delivery"]
+        assert "V4-V6 enforce a hard review cutoff" in descriptions["deliveryos_evaluate_delivery"]
+        assert "V4-V6 block late decisions" in descriptions["deliveryos_close_unreviewed"]
+
+        recovery_status = await client.call_tool("deliveryos_passport_receipt_status", {"job_id": "job_12345"})
+        assert not recovery_status.is_error and "LATEST_FINAL" in recovery_status.content[0].text
+        recovery_write = await client.call_tool("deliveryos_sync_passport_receipt", {
+            "job_id": "job_12345", "expected_version": 1,
+        })
+        assert not recovery_write.is_error and "sync_passport_receipt" in recovery_write.content[0].text
 
         passport = await client.call_tool("deliveryos_get_provider_profile", {
             "wallet_address": "0x" + "b" * 40,

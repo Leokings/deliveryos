@@ -124,6 +124,41 @@ class DeliveryOSClient:
             raise ValueError("Receipt ID must be a 32-byte hexadecimal hash")
         return self._passport_read("get_receipt_by_id", [receipt_id])
 
+    def passport_receipt_status(self, job_id: str) -> dict:
+        """Read source and companion at LATEST_FINAL; dispatch is not receipt success."""
+        job = self.get_job(job_id)
+        if job.get("protocol") != "DELIVERYOS_PACKAGES_V6":
+            raise ValueError("Receipt recovery requires the V6 contract")
+        dispatch = self._read("get_passport_dispatch", [job_id])
+        if (not self.passport_contract_address or
+                dispatch["passport_contract_address"].lower() != self.passport_contract_address.lower()):
+            raise ValueError("Configured Passport does not match the source contract")
+        bound_source = self._passport_read("get_source_contract", [])
+        if str(bound_source).lower() != self.contract_address.lower():
+            raise ValueError("Passport is not bound to this source contract")
+        receipt = (self._passport_read("get_outcome_for_job", [job_id, int(job["current_version"])])
+                   if dispatch["receipt_eligible"] else {})
+        return {"job_id": job_id, **dispatch, "receipt_recorded": bool(receipt),
+                "receipt": receipt, "read_finality": "LATEST_FINAL",
+                "warning": "A queued callback is not proof of a successfully recorded receipt."}
+
+    def sync_passport_receipt(self, job_id: str, expected_version: int) -> dict:
+        if type(expected_version) is not int or expected_version < 1:
+            raise ValueError("Expected version must be a positive integer")
+        status = self.passport_receipt_status(job_id)
+        if expected_version != int(status["version"]):
+            raise ValueError("Outcome version changed; inspect the latest job")
+        if not status["receipt_eligible"]:
+            raise ValueError("Only a terminal consensus outcome has a Passport receipt")
+        if self.wallet_address is None:
+            raise RuntimeError("Writes need DELIVERYOS_PRIVATE_KEY in the agent's own environment")
+        job = self.get_job(job_id)
+        if self.wallet_address.lower() not in (job["buyer"].lower(), job["provider"].lower()):
+            raise ValueError("Only a party may sync a receipt")
+        if not status["receipt_recorded"] and time.time() < int(status["next_retry_epoch"]):
+            raise ValueError("Passport retry cooldown has not passed")
+        return self._write("sync_passport_receipt", [job_id, expected_version])
+
     def set_my_provider_profile(self, display_name: str, bio: str,
                                  capabilities: list[str]) -> dict:
         if self.account is None:
@@ -168,10 +203,10 @@ class DeliveryOSClient:
         elif status == "SUBMITTED":
             package_protocol = job.get("protocol")
             can_correct = package_protocol in (
-                "DELIVERYOS_PACKAGES_V3", "DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5",
+                "DELIVERYOS_PACKAGES_V3", "DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5", "DELIVERYOS_PACKAGES_V6",
             )
             before_cutoff = time.time() <= int(job.get("review_deadline_epoch", 0))
-            if package_protocol in ("DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5") and not before_cutoff:
+            if package_protocol in ("DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5", "DELIVERYOS_PACKAGES_V6") and not before_cutoff:
                 if wallet:
                     actions = ["deliveryos_close_unreviewed"]
             elif role == "buyer":
@@ -182,7 +217,12 @@ class DeliveryOSClient:
                     actions.insert(0, "deliveryos_submit_delivery")
             if package_protocol == "DELIVERYOS_PACKAGES_V3" and not before_cutoff and wallet:
                 actions.append("deliveryos_close_unreviewed")
-        protocol = ("v5" if job.get("protocol") == "DELIVERYOS_PACKAGES_V5" else
+        if (job.get("protocol") == "DELIVERYOS_PACKAGES_V6" and
+                status in ("ACCEPTED", "REJECTED", "INCONCLUSIVE") and
+                job.get("decision_source") == "CONSENSUS" and role != "observer"):
+            actions = ["deliveryos_passport_receipt_status", "deliveryos_sync_passport_receipt"]
+        protocol = ("v6" if job.get("protocol") == "DELIVERYOS_PACKAGES_V6" else
+                    "v5" if job.get("protocol") == "DELIVERYOS_PACKAGES_V5" else
                     "v4" if job.get("protocol") == "DELIVERYOS_PACKAGES_V4" else
                     "v3" if job.get("protocol") == "DELIVERYOS_PACKAGES_V3" else
                     "v2" if job.get("protocol") == "DELIVERYOS_PACKAGES_V2" else "v1")
@@ -192,20 +232,24 @@ class DeliveryOSClient:
             "role": role,
             "wallet_address": self.wallet_address,
             "possible_tools": actions,
-            "job_url_path": None if protocol == "v5" else f"/?version={protocol}&job={job_id}",
-            "browser_ui_note": ("V5 is available through MCP. The hosted browser workspace has not yet been wired to V5."
-                                if protocol == "v5" else None),
-            "next_step": ("The v4/v5 decision cutoff has passed. Anyone with a wallet may close this "
+            "job_url_path": None if protocol in ("v5", "v6") else f"/?version={protocol}&job={job_id}",
+            "browser_ui_note": ("V5/V6 jobs are available through MCP. The hosted browser workspace remains V4."
+                                if protocol in ("v5", "v6") else None),
+            "next_step": ("The v4/v5/v6 decision cutoff has passed. Anyone with a wallet may close this "
                           "unreviewed submission as inconclusive; approval and review can no longer succeed."
-                          if protocol in ("v4", "v5") and actions == ["deliveryos_close_unreviewed"] else
-                          "Use the DeliveryOS V5 MCP tools. For acceptance/review, pass the inspected "
+                          if protocol in ("v4", "v5", "v6") and actions == ["deliveryos_close_unreviewed"] else
+                          "Check the finalized Passport receipt. If missing, wait until next_retry_epoch "
+                          "and sync the stored outcome; this cannot reassess or change the verdict."
+                          if protocol == "v6" and actions == ["deliveryos_passport_receipt_status",
+                                                               "deliveryos_sync_passport_receipt"] else
+                          "Use the DeliveryOS MCP tools. For acceptance/review, pass the inspected "
                           "current_version; verified Passport receipts appear only after terminal validator "
                           "decisions finalize."
-                          if protocol == "v5" and actions else
-                          "Choose a possible tool. For v3/v4/v5 acceptance/review, pass the inspected "
+                          if protocol in ("v5", "v6") and actions else
+                          "Choose a possible tool. For v3/v4/v5/v6 acceptance/review, pass the inspected "
                           "current_version as expected_version. Then check the transaction hash "
                           "until finalized_success is true and read the job again."
-                          if protocol in ("v3", "v4", "v5") and actions else
+                          if protocol in ("v3", "v4", "v5", "v6") and actions else
                           "Choose a possible tool, then check its transaction hash until "
                           "finalized_success is true and read the job again."
                           if actions else "No role-specific write is currently suggested. "
@@ -321,7 +365,7 @@ class DeliveryOSClient:
     def submit_delivery(self, job_id: str, evidence_url: str) -> dict:
         job = self.get_job(job_id)
         supports_correction = job.get("protocol") in (
-            "DELIVERYOS_PACKAGES_V3", "DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5",
+            "DELIVERYOS_PACKAGES_V3", "DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5", "DELIVERYOS_PACKAGES_V6",
         )
         if job["status"] not in (("ACTIVE", "REVISION", "SUBMITTED") if supports_correction else ("ACTIVE", "REVISION")):
             raise ValueError("Job is not awaiting a delivery")
@@ -331,7 +375,7 @@ class DeliveryOSClient:
             raise ValueError("Evidence URL is outside the agreed source prefix")
         if job.get("protocol") in (
             "DELIVERYOS_PACKAGES_V2", "DELIVERYOS_PACKAGES_V3",
-            "DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5",
+            "DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5", "DELIVERYOS_PACKAGES_V6",
         ):
             from .packages import verify_public_package
             previous_fingerprint = job.get("last_reviewed_fingerprint") if supports_correction else None
@@ -356,18 +400,18 @@ class DeliveryOSClient:
         job = self.get_job(job_id)
         protocol = job.get("protocol")
         if protocol in (
-            "DELIVERYOS_PACKAGES_V3", "DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5",
+            "DELIVERYOS_PACKAGES_V3", "DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5", "DELIVERYOS_PACKAGES_V6",
         ):
             if type(expected_version) is not int or expected_version < 1:
-                raise ValueError("V3/V4/V5 decisions require the inspected expected_version")
+                raise ValueError("V3/V4/V5/V6 decisions require the inspected expected_version")
             if expected_version != int(job["current_version"]):
                 raise ValueError("Pending version changed; inspect the latest evidence")
-            if (protocol in ("DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5") and
+            if (protocol in ("DELIVERYOS_PACKAGES_V4", "DELIVERYOS_PACKAGES_V5", "DELIVERYOS_PACKAGES_V6") and
                     time.time() > int(job.get("review_deadline_epoch", 0))):
                 raise ValueError("Review cutoff passed; close the unreviewed submission")
             return [job_id, expected_version]
         if expected_version is not None:
-            raise ValueError("Expected version is supported only by the v3/v4/v5 contracts")
+            raise ValueError("Expected version is supported only by the v3/v4/v5/v6 contracts")
         return [job_id]
 
     def accept_delivery(self, job_id: str, expected_version: int | None = None) -> dict:

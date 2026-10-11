@@ -42,11 +42,11 @@ export async function readJobId(index: number, address: `0x${string}` = CONTRACT
   }) as string;
 }
 
-/** The Provider Passport is a separately deployed V5 companion contract. */
+/** Provider Passport is a separately deployed V5/V6 companion contract. */
 export function getPassportContractAddress(): `0x${string}` | null {
   const address = process.env.DELIVERYOS_PASSPORT_ADDRESS;
   if (!address) return null;
-  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+  if (!/^0x(?!0{40}$)[0-9a-fA-F]{40}$/.test(address)) {
     throw new Error("DELIVERYOS_PASSPORT_ADDRESS must be a 20-byte contract address");
   }
   return address as `0x${string}`;

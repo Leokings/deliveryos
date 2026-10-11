@@ -26,6 +26,16 @@ existing V1-V4 outcomes as Passport receipts and do not add an aggregate
 reputation score. Canonical deployment addresses and evidence are in
 `deployments/studionet_packages_v5.json`.
 
+## Shipped: V6 receipt recovery
+
+New immutable source and companion add a bounded, party-authorized resend
+path for failed finalized outcome callbacks. Agents can distinguish queued
+dispatch from recorded receipt and recover without changing the decision.
+Public lookup retains V5 history. See the V6 deployment evidence and audit
+report for the live normal and controlled-failure tests. Browser job actions
+remain V4; V6 lifecycle and recovery use local MCP. No hosted signer,
+automatic retry worker, escrow, or private evidence is claimed.
+
 ## Built in v2: evidence packages for agent work
 
 V1 assesses one UTF-8 file of at most 4,800 bytes. V2 supports a canonical

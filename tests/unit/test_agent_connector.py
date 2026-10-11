@@ -191,7 +191,7 @@ def test_v5_agent_uses_hard_cutoff_and_version_bound_decisions(monkeypatch):
     }
     result = service.next_actions("job_12345")
     assert result["job_url_path"] is None
-    assert "not yet been wired" in result["browser_ui_note"]
+    assert "browser workspace remains V4" in result["browser_ui_note"]
     assert result["possible_tools"] == ["deliveryos_submit_delivery", "deliveryos_evaluate_delivery"]
     service.evaluate_delivery("job_12345", 2)
     assert sdk.writes[0][3] == ["job_12345", 2]

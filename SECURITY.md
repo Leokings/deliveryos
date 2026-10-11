@@ -1,4 +1,4 @@
-# DeliveryOS v1–v4 security boundary
+# DeliveryOS v1–v6 security boundary
 
 This is a non-custodial, decision-only Studionet release. Do not connect
 payments to its status field without a separate escrow design and review.
@@ -57,6 +57,21 @@ payments to its status field without a separate escrow design and review.
 - Only `raw.githubusercontent.com` and full commit-SHA evidence URLs are
   accepted. The buyer approves the repository prefix. The agent connector
   refuses redirects; GenLayer validators check the final fetched byte hash.
+
+- V5/V6 receipts require the pinned source contract and a terminal validator
+  result; manual approval and timeout are not consensus receipts. The owner
+  selects the source once during deployment; verify that binding.
+- A finalized source transaction can have a failed independent callback. V6
+  permits only a job party to retry the exact stored outcome after 120 seconds.
+  It cannot change an outcome or re-run AI. A companion receipt must be read
+  at LATEST_FINAL before claiming that recording succeeded. V5 lacks this
+  recovery method; old source code and history remain immutable.
+- Browser preflight preserves UTF-8 BOM bytes before JSON parsing, matching
+  the contract's rejection of BOM-prefixed manifests and JSON artifacts.
+- Public Passport lookup is read-only, merges known V5/V6 deployments, preserves
+  receipt fields, and exposes provenance separately. Profile claims remain
+  unverified; colluding wallets can create apparently successful artificial
+  jobs. A receipt is not an identity, reputation, authenticity, or truth proof.
 
 Known limits: there is no escrow, automated evidence authenticity check,
 private evidence, image/video interpretation, app-level appeal flow, audited

@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from pathlib import Path
 
 import pytest
 
@@ -28,10 +29,23 @@ def manifest():
     }, sort_keys=True, separators=(",", ":")) + "\n").encode()
 
 
-@pytest.fixture
-def submitted(direct_vm, direct_deploy, direct_alice, direct_bob):
+@pytest.fixture(params=["V4", "V6"])
+def submitted(direct_vm, direct_deploy, direct_alice, direct_bob, request):
     direct_vm.warp("2026-10-08T12:00:00Z")
-    contract = direct_deploy("contracts/DeliveryOSPackagesV4.py")
+    path = "contracts/DeliveryOSPackages" + request.param + ".py"
+    if request.param == "V6":
+        source = "0x" + hashlib.sha256(str(Path(path).resolve()).encode()).digest()[:20].hex()
+        def hook(_vm, call):
+            if "CallContract" in call:
+                from genlayer.py import calldata
+                return bytes([0]) + calldata.encode(source)
+            if "PostMessage" in call:
+                return {"ok": None}
+            return None
+        direct_vm._gl_call_hook = hook
+        contract = direct_deploy(path, "0x" + "e" * 40)
+    else:
+        contract = direct_deploy(path)
     direct_vm.sender = direct_alice
     contract.create_job("hard_cutoff_01", "0x" + direct_bob.hex(),
                         "Deliver an installation guide with a command.",
@@ -44,7 +58,7 @@ def submitted(direct_vm, direct_deploy, direct_alice, direct_bob):
     direct_vm.mock_web(r".*guide\.md$", {"status": 200, "body": GUIDE})
     direct_vm.mock_llm(r".*untrusted_documents.*", json.dumps({"statuses": ["MET"]}))
     job = contract.get_job("hard_cutoff_01")
-    assert job["protocol"] == "DELIVERYOS_PACKAGES_V4"
+    assert job["protocol"] == "DELIVERYOS_PACKAGES_" + request.param
     assert job["status"] == "SUBMITTED"
     return contract, direct_vm, direct_alice, direct_bob, job["review_deadline_epoch"]
 

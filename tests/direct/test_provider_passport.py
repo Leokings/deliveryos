@@ -12,11 +12,11 @@ JOB = "passport_job_001"
 TEST_NOW = int(datetime(2026, 10, 12, 12, tzinfo=timezone.utc).timestamp())
 
 
-@pytest.fixture
-def passport(direct_vm, direct_deploy, direct_alice):
+@pytest.fixture(params=["DeliveryOSProviderPassport", "DeliveryOSProviderPassportV2"])
+def passport(direct_vm, direct_deploy, direct_alice, request):
     direct_vm.warp("2026-10-12T12:00:00Z")
     direct_vm.sender = direct_alice
-    contract = direct_deploy("contracts/DeliveryOSProviderPassport.py")
+    contract = direct_deploy("contracts/" + request.param + ".py")
     contract.set_source_contract(SOURCE)
     return contract, direct_vm, direct_alice
 
@@ -44,7 +44,7 @@ def test_source_is_owner_configured_once_and_not_replaceable(passport, direct_ch
 def test_only_source_can_create_valid_immutable_receipts(passport, direct_charlie):
     contract, vm, _owner = passport
     vm.sender = direct_charlie
-    with vm.expect_revert("Only the configured DeliveryOS V5 contract"):
+    with vm.expect_revert("Only the configured DeliveryOS"):
         record(contract)
 
     vm.sender = SOURCE

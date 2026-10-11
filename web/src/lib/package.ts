@@ -138,7 +138,7 @@ export async function verifyPublicPackage(manifestUrl: string, evidencePrefix: s
   let manifest: unknown;
   let text: string;
   try {
-    text = new TextDecoder("utf-8", { fatal: true }).decode(manifestBytes);
+    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(manifestBytes);
     manifest = JSON.parse(text);
   } catch { fail("Manifest must be UTF-8 JSON."); }
   if (!objectWithKeys(manifest, ["protocol", "source_commit", "files"])) {
@@ -193,7 +193,7 @@ export async function verifyPublicPackage(manifestUrl: string, evidencePrefix: s
       fail("File bytes do not match the manifest.");
     }
     let content: string;
-    try { content = new TextDecoder("utf-8", { fatal: true }).decode(body); }
+    try { content = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(body); }
     catch { fail("File must be UTF-8 text."); }
     if (!content.trim()) fail("File has no text.");
     if (file.media_type === "application/json") {

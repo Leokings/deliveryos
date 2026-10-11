@@ -12,6 +12,7 @@ type Receipt = {
   evidence_fingerprint: string;
   decided_epoch: number;
   finality: string;
+  source_contract: string;
 };
 type Passport = {
   chain_id: number;
@@ -88,7 +89,7 @@ export default function ProviderPassportPage() {
     <section className="passport-hero">
       <div className="passport-eyebrow"><span className="live-pulse" /> PUBLIC PROVIDER PASSPORT</div>
       <h1>A record of work.<br /><em>Not a trust score.</em></h1>
-      <p>Look up a Studionet wallet to see its published profile and finalized GenLayer consensus outcomes from DeliveryOS V5.</p>
+      <p>Look up a Studionet wallet to see its published profile and finalized GenLayer consensus outcomes from DeliveryOS V5 and V6.</p>
       <form className="passport-lookup" onSubmit={submit}>
         <label htmlFor="passport-wallet">Provider wallet address</label>
         <div className="passport-input-row">
@@ -96,7 +97,7 @@ export default function ProviderPassportPage() {
           <button type="submit" disabled={busy}>{busy ? "Looking…" : "Look up"}<span aria-hidden="true">→</span></button>
         </div>
       </form>
-      <div className="passport-boundary"><strong>Read this fairly.</strong> Capability tags and bios are self-reported. Outcome receipts record only V5 validator decisions; they are not endorsements, a quality score, or proof that every real-world claim is true.</div>
+      <div className="passport-boundary"><strong>Read this fairly.</strong> Capability tags and bios are self-reported. Outcome receipts record only validator decisions; they are not endorsements, a quality score, or proof that every real-world claim is true. V6 adds recovery for failed receipt callbacks.</div>
     </section>
 
     {error && <div className="passport-alert" role="status">{error}</div>}
@@ -109,22 +110,23 @@ export default function ProviderPassportPage() {
         <small className="passport-self-report">Profile claims: {passport.profile.profile_claims.replaceAll("_", " ").toLowerCase()}</small>
       </article>
 
-      <div className="passport-receipts-heading"><div><div className="passport-eyebrow">FINALIZED CONSENSUS RECORD</div><h2>Work outcomes</h2></div><span>{passport.receipts_returned} most recent shown</span></div>
-      {passport.receipts.length === 0 ? <div className="passport-empty">No V5 consensus outcome receipts are recorded for this wallet yet.</div> : <div className="passport-receipts">{passport.receipts.map((receipt, index) => <article className="passport-receipt" key={receipt.receipt_id || index}>
+      <div className="passport-receipts-heading"><div><div className="passport-eyebrow">FINALIZED CONSENSUS RECORD</div><h2>Work outcomes</h2></div><span>{passport.receipts_returned} recent records shown</span></div>
+      {passport.receipts.length === 0 ? <div className="passport-empty">No consensus outcome receipts are recorded for this wallet yet.</div> : <div className="passport-receipts">{passport.receipts.map((receipt, index) => <article className="passport-receipt" key={receipt.receipt_id || index}>
         <div className="passport-receipt-top"><span className={`passport-verdict verdict-${receipt.verdict.toLowerCase()}`}>{receipt.verdict}</span><time>{date(receipt.decided_epoch)}</time></div>
         <h3>{receipt.job_id} <small>· version {receipt.version}</small></h3>
         <p>GenLayer validator decision · {receipt.finality.replaceAll("_", " ").toLowerCase()}</p>
         <div className="passport-criteria">{receipt.criterion_statuses.map((status, criterion) => <span key={criterion}>Criterion {criterion + 1}: {status.replaceAll("_", " ").toLowerCase()}</span>)}</div>
         <div className="passport-fingerprint"><span>Evidence fingerprint</span><code title={receipt.evidence_fingerprint}>{shorten(receipt.evidence_fingerprint)}</code></div>
         <div className="passport-fingerprint"><span>Receipt ID</span><code title={receipt.receipt_id}>{shorten(receipt.receipt_id)}</code></div>
+        <div className="passport-fingerprint"><span>Source contract</span><code title={receipt.source_contract}>{shorten(receipt.source_contract)}</code></div>
       </article>)}</div>}
-      {passport.receipt_count > passport.receipts_returned && <p className="passport-pagination-note">Showing the newest {passport.receipts_returned} of {passport.receipt_count}. Agents can page through the complete on-chain history with the MCP tools.</p>}
+      <p className="passport-pagination-note">Recent recorded entries from both registries, ordered by decision time. A recovered older decision can be recorded later. Agents can page through each registry’s complete history with MCP.</p>
     </section>}
 
     <section className="passport-agents">
       <div><div className="passport-eyebrow">AGENT ACCESS</div><h2>Use it from an agent, too.</h2><p>The public HTTP lookup needs no API key. For direct tool access, configure the DeliveryOS MCP server with <code>DELIVERYOS_PASSPORT_ADDRESS</code>.</p></div>
-      <div className="passport-tool-list"><code>deliveryos_get_provider_profile</code><code>deliveryos_get_provider_receipt_count</code><code>deliveryos_get_provider_receipt</code><code>deliveryos_get_receipt_by_id</code><code>deliveryos_set_my_provider_profile</code><small>Profile updates are signed by the agent’s own configured wallet. Reads never sign transactions.</small></div>
+      <div className="passport-tool-list"><code>deliveryos_get_provider_profile</code><code>deliveryos_get_provider_receipt_count</code><code>deliveryos_get_provider_receipt</code><code>deliveryos_get_receipt_by_id</code><code>deliveryos_set_my_provider_profile</code><code>deliveryos_passport_receipt_status</code><code>deliveryos_sync_passport_receipt</code><small>Profile updates and V6 receipt recovery are signed by the agent’s own configured wallet. Reads never sign transactions.</small></div>
     </section>
-    <footer className="passport-footer">Studionet · Chain {passport?.chain_id ?? 61999} · Passport records require the separate V5 contracts to be deployed and configured.</footer>
+    <footer className="passport-footer">Studionet · Chain {passport?.chain_id ?? 61999} · V5 history preserved · V6 receipt recovery through MCP · No payments.</footer>
   </main>;
 }
