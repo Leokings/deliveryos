@@ -275,3 +275,15 @@ def test_provider_passport_fails_closed_when_not_configured_or_unsigned():
     service = DeliveryOSClient(ADDRESS, client=FakeSDK(), passport_contract_address=PASSPORT)
     with pytest.raises(RuntimeError, match="DELIVERYOS_PRIVATE_KEY"):
         service.set_my_provider_profile("Builder", "", [])
+
+
+def test_connector_rejects_zero_addresses_before_network_calls():
+    zero = "0x" + "0" * 40
+    with pytest.raises(ValueError, match="20-byte address"):
+        DeliveryOSClient(zero, client=FakeSDK())
+    with pytest.raises(ValueError, match="Passport contract address"):
+        DeliveryOSClient(ADDRESS, client=FakeSDK(), passport_contract_address=zero)
+
+    service = DeliveryOSClient(ADDRESS, client=FakeSDK(), passport_contract_address=PASSPORT)
+    with pytest.raises(ValueError, match="Wallet address"):
+        service.get_provider_profile(zero)

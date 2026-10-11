@@ -13,7 +13,7 @@ export function contractFor(version: ContractVersion) {
 export const EXPLORER = "https://explorer-studio.genlayer.com";
 export const JOB_ID_PATTERN = /^[A-Za-z0-9_-]{8,64}$/;
 export const TX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
-export const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
+export const ADDRESS_PATTERN = /^0x(?!0{40}$)[0-9a-fA-F]{40}$/;
 export const MAX_EVIDENCE_BYTES = 4800;
 
 export type Job = {

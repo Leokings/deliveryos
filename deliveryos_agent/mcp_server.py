@@ -169,13 +169,13 @@ def deliveryos_verify_package(manifest_url: str, evidence_prefix: str,
 
 @mcp.tool()
 def deliveryos_accept_delivery(job_id: str, expected_version: int | None = None) -> dict:
-    """Buyer: accept inspected evidence. V3/V4 require current_version; v4 also enforces a hard review cutoff."""
+    """Buyer: accept inspected evidence. V3-V5 require current_version; V4/V5 enforce a hard review cutoff."""
     return _service().accept_delivery(job_id, expected_version) if expected_version is not None else _service().accept_delivery(job_id)
 
 
 @mcp.tool()
 def deliveryos_evaluate_delivery(job_id: str, expected_version: int | None = None) -> dict:
-    """Either party: request validator review. V3/V4 require the inspected current_version; v4 has a hard cutoff."""
+    """Either party: request validator review. V3-V5 require current_version; V4/V5 enforce a hard review cutoff."""
     return _service().evaluate_delivery(job_id, expected_version) if expected_version is not None else _service().evaluate_delivery(job_id)
 
 
@@ -187,7 +187,7 @@ def deliveryos_expire_undelivered(job_id: str) -> dict:
 
 @mcp.tool()
 def deliveryos_close_unreviewed(job_id: str) -> dict:
-    """Anyone: close a still-unreviewed delivery after its seven-day grace period; v4 also blocks late decisions."""
+    """Anyone: close a still-unreviewed delivery after its seven-day grace period; V4/V5 block late decisions and corrections."""
     return _service().close_unreviewed(job_id)
 
 

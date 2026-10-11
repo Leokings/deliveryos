@@ -31,7 +31,6 @@
   },
   "vercel": {
     "production_url": "https://deliveryos-tau-wheat.vercel.app/",
-    "deployment_id": "dpl_123zJmUNXxHK9Qmk5Kh142JGrFLF",
     "passport_page": "/passport",
     "passport_api": "/api/passport?wallet=<wallet-address>"
   },

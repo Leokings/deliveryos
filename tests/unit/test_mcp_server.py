@@ -54,6 +54,7 @@ async def test_mcp_exposes_read_and_signed_write_tools(monkeypatch):
     async with Client(mcp_server.mcp, raise_exceptions=True) as client:
         listing = await client.list_tools()
         names = {tool.name for tool in listing.tools}
+        descriptions = {tool.name: tool.description or "" for tool in listing.tools}
         assert {"deliveryos_identity", "deliveryos_get_job", "deliveryos_next_actions",
                 "deliveryos_submit_delivery", "deliveryos_evaluate_delivery",
                 "deliveryos_transaction_status", "deliveryos_get_job_count",
@@ -62,6 +63,9 @@ async def test_mcp_exposes_read_and_signed_write_tools(monkeypatch):
                 "deliveryos_get_provider_profile", "deliveryos_get_provider_receipt_count",
                 "deliveryos_get_provider_receipt", "deliveryos_get_receipt_by_id",
                 "deliveryos_set_my_provider_profile"} <= names
+        assert "V3-V5 require current_version" in descriptions["deliveryos_accept_delivery"]
+        assert "V4/V5 enforce a hard review cutoff" in descriptions["deliveryos_evaluate_delivery"]
+        assert "V4/V5 block late decisions" in descriptions["deliveryos_close_unreviewed"]
 
         passport = await client.call_tool("deliveryos_get_provider_profile", {
             "wallet_address": "0x" + "b" * 40,

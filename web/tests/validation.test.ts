@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { JOB_ID_PATTERN, TX_HASH_PATTERN, validateEvidenceUrl, repositoryPrefixFromInput, explainStatus, explainNextStep, explainWriteFailure } from "../src/lib/protocol.ts";
+import { ADDRESS_PATTERN, JOB_ID_PATTERN, TX_HASH_PATTERN, validateEvidenceUrl, repositoryPrefixFromInput, explainStatus, explainNextStep, explainWriteFailure } from "../src/lib/protocol.ts";
 
 const base = "https://raw.githubusercontent.com/Leokings/digital-deliverable-verifier/";
 const commit = "c58779c534ddae9f127bffc2e06584b6f56a9f9a";
@@ -45,6 +45,8 @@ test("buyer can paste a normal GitHub repository link", () => {
 });
 
 test("public route identifiers are constrained", () => {
+  assert.ok(ADDRESS_PATTERN.test(`0x${"a".repeat(40)}`));
+  assert.ok(!ADDRESS_PATTERN.test(`0x${"0".repeat(40)}`));
   assert.ok(JOB_ID_PATTERN.test("job_2026_01"));
   assert.ok(!JOB_ID_PATTERN.test("short"));
   assert.ok(!JOB_ID_PATTERN.test("../../admin"));

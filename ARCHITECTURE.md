@@ -1,4 +1,4 @@
-# DeliveryOS v1–v4 architecture
+# DeliveryOS v1–v5 architecture
 
 DeliveryOS is an agent-callable delivery lifecycle, not an AI agent or a generic
 LLM chat service. Existing buyer and provider agents (or humans) use signed
@@ -10,7 +10,7 @@ neutral acceptance decision.
 | Layer | Responsibility |
 | --- | --- |
 | HTTP/MCP adapter | Validate requests, prepare transactions, show status, notify callers; never decide the on-chain verdict. |
-| Evidence host | Serve publicly accessible, UTF-8 deliverable bytes. V1 accepts one bounded file; v2–v4 accept a canonical manifest with 1–6 bounded source files. |
+| Evidence host | Serve publicly accessible, UTF-8 deliverable bytes. V1 accepts one bounded file; v2–v5 accept a canonical manifest with 1–6 bounded source files. |
 | Intelligent Contract | Freeze the brief and criteria, authorize buyer/provider actions, enforce deadlines and revision limits, retrieve pinned evidence, determine a structured verdict by validator consensus, and persist the result. |
 | GenLayer validators | Independently fetch the same bytes and compare ordered per-criterion statuses, not free-form prose. |
 

@@ -1,7 +1,7 @@
 """Security and indexing tests for the wallet-bound Provider Passport."""
 
 import json
-import time
+from datetime import datetime, timezone
 
 import pytest
 
@@ -9,10 +9,12 @@ import pytest
 SOURCE = "0x" + "f" * 40
 FINGERPRINT = "a" * 64
 JOB = "passport_job_001"
+TEST_NOW = int(datetime(2026, 10, 12, 12, tzinfo=timezone.utc).timestamp())
 
 
 @pytest.fixture
 def passport(direct_vm, direct_deploy, direct_alice):
+    direct_vm.warp("2026-10-12T12:00:00Z")
     direct_vm.sender = direct_alice
     contract = direct_deploy("contracts/DeliveryOSProviderPassport.py")
     contract.set_source_contract(SOURCE)
@@ -24,7 +26,7 @@ def record(contract, job_id=JOB, buyer="0x" + "1" * 40,
            fingerprint=FINGERPRINT, statuses='["MET","MET"]', epoch=None):
     return contract.record_consensus_outcome(
         job_id, buyer, provider, version, verdict, fingerprint,
-        statuses, int(time.time()) if epoch is None else epoch,
+        statuses, TEST_NOW - 1 if epoch is None else epoch,
     )
 
 
@@ -94,7 +96,7 @@ def test_receipt_rejects_self_dealing_bad_hash_epoch_and_index(passport, direct_
     with vm.expect_revert("hexadecimal"):
         record(contract, job_id="passport_bad_hash", fingerprint="z" * 64)
     with vm.expect_revert("Decision time is invalid"):
-        record(contract, job_id="passport_future", epoch=int(time.time()) + 1000)
+        record(contract, job_id="passport_future", epoch=TEST_NOW + 1000)
     with vm.expect_revert("out of range"):
         contract.get_provider_receipt("0x" + "2" * 40, 0)
     assert contract.get_receipt_count() == 0

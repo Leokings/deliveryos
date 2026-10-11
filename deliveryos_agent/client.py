@@ -17,7 +17,7 @@ from genlayer_py.client import create_client
 from genlayer_py.types import TransactionHashVariant
 
 
-_ADDRESS = re.compile(r"^0x[0-9a-fA-F]{40}$")
+_ADDRESS = re.compile(r"^0x(?!0{40}$)[0-9a-fA-F]{40}$")
 _COMMIT = re.compile(r"^[0-9a-fA-F]{40}$")
 _JOB_ID = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 MAX_EVIDENCE_BYTES = 4800
